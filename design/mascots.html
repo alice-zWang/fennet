@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Openpage Mascots</title>
+<style>
+  :root { --bg: #050705; --card: #0c110c; --line: #1e2a1c; --text: #eaf7da; --dim: #93a487; --lime: #b8ff2c; }
+  @media (prefers-color-scheme: light) { :root { --bg: #f4f6f0; --card: #fff; --line: #d9e0cf; --text: #11180d; --dim: #46533e; --lime: #3f6b00; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, "Segoe UI", sans-serif; padding: 24px 16px 48px; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  h2 { margin: 36px 0 4px; font-size: 20px; }
+  p { margin: 0 0 12px; color: var(--dim); max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+  figure { color: var(--text); margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 8px 10px; text-align: center; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font: 12px ui-monospace, monospace; color: var(--dim); }
+  figcaption b { color: var(--lime); font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Openpage mascots</h1>
+<p>50 fractal buddies (F01–F50) and 50 ducks (D01–D50). Every design is drawn from simple shapes and math by the code in this page, so they're all original. The ducks were made deliberately different from CS50's rubber duck: a lime feather tuft, note-taking props and their own proportions. Pick numbers you like, or mix features ("F23's body with F07's face").</p>
+<h2>Fractal buddies</h2>
+<p>10 fractal bodies × 5 faces.</p>
+<div class="grid" id="fractals"></div>
+<h2>Ducks</h2>
+<p>5 duck styles × 10 props.</p>
+<div class="grid" id="ducks"></div>
+<script>
+const LINE = 'currentColor';
+const LIME = '#b8ff2c', DEEP = '#3f6b00', INK = '#11180d', MINT = '#4ee6c8', CREAM = '#f4ffd0';
+const f = (n) => +n.toFixed(2);
+const pts = (a) => a.map(([x, y]) => `${f(x)},${f(y)}`).join(' ');
+
+// ---------- fractal bodies: each returns SVG markup centered near (80, 84) and the face center/scale
+function koch() {
+  let p = [[80, 30], [127, 111], [33, 111]].map(([x, y]) => [x, y]);
+  for (let k = 0; k < 3; k++) {
+    const q = [];
+    for (let i = 0; i < p.length; i++) {
+      const [ax, ay] = p[i], [bx, by] = p[(i + 1) % p.length];
+      const dx = (bx - ax) / 3, dy = (by - ay) / 3;
+      const c = [ax + dx, ay + dy], e = [ax + 2 * dx, ay + 2 * dy];
+      const peak = [c[0] + dx * 0.5 + dy * 0.866, c[1] + dy * 0.5 - dx * 0.866];
+      q.push([ax, ay], c, peak, e);
+    }
+    p = q;
+  }
+  return { svg: `<polygon points="${pts(p)}" fill="${LIME}" stroke="${DEEP}" stroke-width="1.5" stroke-linejoin="round"/>`, cx: 80, cy: 84, s: 1 };
+}
+function mandel() {
+  const k = 62, X = (x) => 108 + x * k, Yc = (y) => 84 + y * k, c = [];
+  for (let t = 0; t <= 6.3; t += 0.04) c.push([X(0.5 * Math.cos(t) - 0.25 * Math.cos(2 * t)), Yc(0.5 * Math.sin(t) - 0.25 * Math.sin(2 * t))]);
+  const bulbs = [[-1, 0, 0.25], [-1.31, 0, 0.058], [-0.125, 0.744, 0.095], [-0.125, -0.744, 0.095], [0.28, 0.53, 0.044], [0.28, -0.53, 0.044], [-1.38, 0, 0.012]];
+  return { svg: `<g fill="${LIME}" stroke="${DEEP}" stroke-width="1.5"><polygon points="${pts(c)}"/>${bulbs.map(([x, y, r]) => `<circle cx="${f(X(x))}" cy="${f(Yc(y))}" r="${f(r * k)}"/>`).join('')}</g>`, cx: 98, cy: 84, s: 0.9 };
+}
+function sierpinski() {
+  const out = [];
+  const tri = (ax, ay, bx, by, cx, cy, d) => {
+    if (!d) { out.push(`<polygon points="${pts([[ax, ay], [bx, by], [cx, cy]])}"/>`); return; }
+    const ab = [(ax + bx) / 2, (ay + by) / 2], bc = [(bx + cx) / 2, (by + cy) / 2], ca = [(cx + ax) / 2, (cy + ay) / 2];
+    tri(ax, ay, ...ab, ...ca, d - 1); tri(...ab, bx, by, ...bc, d - 1); tri(...ca, ...bc, cx, cy, d - 1);
+  };
+  tri(80, 22, 140, 128, 20, 128, 3);
+  return { svg: `<g fill="${LIME}" stroke="${DEEP}" stroke-width="1" stroke-linejoin="round">${out.join('')}</g>`, cx: 80, cy: 100, s: 0.7, plate: true, plateR: 17 };
+}
+function pythagoras() {
+  const out = [];
+  const sq = (x, y, size, ang, d) => {
+    const ux = Math.cos(ang), uy = Math.sin(ang), vx = uy, vy = -ux;   // v points "up" from the base
+    const p = [[x, y], [x + ux * size, y + uy * size], [x + ux * size + vx * size, y + uy * size + vy * size], [x + vx * size, y + vy * size]];
+    out.push(`<polygon points="${pts(p)}" fill="${d > 3 ? LIME : MINT}"/>`);
+    if (!d) return;
+    const ns = size * Math.SQRT1_2, a1 = ang - Math.PI / 4;
+    sq(p[3][0], p[3][1], ns, a1, d - 1);
+    sq(p[3][0] + Math.cos(a1) * ns, p[3][1] + Math.sin(a1) * ns, ns, ang + Math.PI / 4, d - 1);
+  };
+  sq(62, 148, 36, 0, 7);
+  return { svg: `<g stroke="${DEEP}" stroke-width="0.8" stroke-linejoin="round">${out.join('')}</g>`, cx: 80, cy: 130, s: 0.75 };
+}
+function dragon() {
+  let seq = [1];
+  for (let k = 0; k < 10; k++) seq = [...seq, 1, ...seq.slice().reverse().map((v) => 1 - v)];
+  let x = 52, y = 58, dir = 0; const d = 3.2; const p = [[x, y]];
+  const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+  for (const t of seq) { x += DX[dir] * d; y += DY[dir] * d; p.push([x, y]); dir = (dir + (t ? 1 : 3)) % 4; }
+  x += DX[dir] * d; y += DY[dir] * d; p.push([x, y]);
+  // fit into box
+  const xs = p.map((q) => q[0]), ys = p.map((q) => q[1]);
+  const mnx = Math.min(...xs), mxx = Math.max(...xs), mny = Math.min(...ys), mxy = Math.max(...ys);
+  const k = 110 / Math.max(mxx - mnx, mxy - mny);
+  const q = p.map(([a, b]) => [25 + (a - mnx) * k, 30 + (b - mny) * k]);
+  return { svg: `<circle cx="80" cy="84" r="46" fill="${CREAM}"/><polyline points="${pts(q)}" fill="none" stroke="${DEEP}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`, cx: 80, cy: 84, s: 0.9, plate: true };
+}
+function bubbles() {
+  const out = [];
+  const b = (x, y, r, d) => {
+    out.push(`<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}"/>`);
+    if (!d) return;
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + d; b(x + Math.cos(a) * r * 1.38, y + Math.sin(a) * r * 1.38, r * 0.4, d - 1); }
+  };
+  b(80, 84, 30, 2);
+  return { svg: `<g fill="${LIME}" stroke="${DEEP}" stroke-width="1.2">${out.join('')}</g>`, cx: 80, cy: 84, s: 0.95 };
+}
+function shell() {
+  // golden spiral chambers
+  const out = []; let r = 44; let a = 0; const cx = 82, cy = 86;
+  for (let i = 0; i < 9; i++) {
+    const x = cx + Math.cos(a) * (44 - r) * 0.55, y = cy + Math.sin(a) * (44 - r) * 0.55;
+    out.push(`<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}" fill="${i % 2 ? LIME : '#d6ff8a'}"/>`);
+    r *= 0.72; a += 2.4;
+  }
+  return { svg: `<g stroke="${DEEP}" stroke-width="1.3">${out.join('')}</g>`, cx: 78, cy: 84, s: 0.95 };
+}
+function tree() {
+  const out = [];
+  const br = (x, y, len, ang, d) => {
+    const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
+    out.push(`<line x1="${f(x)}" y1="${f(y)}" x2="${f(x2)}" y2="${f(y2)}" stroke-width="${f(d * 0.9 + 0.6)}"/>`);
+    if (d) { br(x2, y2, len * 0.72, ang - 0.45, d - 1); br(x2, y2, len * 0.72, ang + 0.45, d - 1); }
+  };
+  br(80, 146, 34, -Math.PI / 2, 7);
+  return { svg: `<circle cx="80" cy="74" r="44" fill="${LIME}" opacity=".9"/><g stroke="${DEEP}" stroke-linecap="round">${out.join('')}</g>`, cx: 80, cy: 112, s: 0.55, plate: true, plateY: 112, plateR: 15 };
+}
+function vicsek() {
+  const out = [];
+  const v = (x, y, s, d) => {
+    if (!d) { out.push(`<rect x="${f(x - s / 2)}" y="${f(y - s / 2)}" width="${f(s)}" height="${f(s)}" rx="${f(s * 0.12)}"/>`); return; }
+    const t = s / 3;
+    for (const [dx, dy] of [[0, 0], [t, 0], [-t, 0], [0, t], [0, -t]]) v(x + dx, y + dy, t, d - 1);
+  };
+  v(80, 84, 120, 3);
+  return { svg: `<g fill="${LIME}" stroke="${DEEP}" stroke-width=".8">${out.join('')}</g>`, cx: 80, cy: 84, s: 0.75, plate: true, plateR: 19 };
+}
+function julia() {
+  // spiral arms of shrinking discs, like a Julia set's spirals
+  const out = [];
+  for (const sgn of [1, -1]) {
+    let r = 13, a = 0, d = 0;
+    for (let i = 0; i < 26; i++) {
+      out.push(`<circle cx="${f(80 + sgn * (18 + d) * Math.cos(a))}" cy="${f(84 + (18 + d) * Math.sin(a) * sgn)}" r="${f(r)}"/>`);
+      a += 0.55; d += 0.9; r *= 0.9;
+    }
+  }
+  return { svg: `<g fill="${LIME}" stroke="${DEEP}" stroke-width="1">${out.join('')}<circle cx="80" cy="84" r="27"/></g>`, cx: 80, cy: 84, s: 0.85 };
+}
+const BODIES = [koch, mandel, sierpinski, pythagoras, dragon, bubbles, shell, tree, vicsek, julia];
+
+// ---------- faces (scale s around cx, cy)
+const FACES = [
+  // 0: friendly dots + smile
+  (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><circle cx="-10" cy="-4" r="4" fill="${INK}"/><circle cx="10" cy="-4" r="4" fill="${INK}"/><circle cx="-8.6" cy="-5.6" r="1.3" fill="#fff"/><circle cx="11.4" cy="-5.6" r="1.3" fill="#fff"/><path d="M-8 6 Q0 13 8 6" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/></g>`,
+  // 1: big shiny eyes + open mouth
+  (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="-11" cy="-5" rx="6.5" ry="8" fill="#fff" stroke="${INK}" stroke-width="1.6"/><ellipse cx="11" cy="-5" rx="6.5" ry="8" fill="#fff" stroke="${INK}" stroke-width="1.6"/><circle cx="-10" cy="-3" r="3.6" fill="${INK}"/><circle cx="12" cy="-3" r="3.6" fill="${INK}"/><circle cx="-9" cy="-4.6" r="1.2" fill="#fff"/><circle cx="13" cy="-4.6" r="1.2" fill="#fff"/><path d="M-5 9 Q0 17 5 9 Z" fill="${INK}"/></g>`,
+  // 2: sleepy / content
+  (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"><path d="M-15 -4 Q-10 1 -5 -4"/><path d="M5 -4 Q10 1 15 -4"/><path d="M-4 7 Q0 10 4 7"/><circle cx="-17" cy="4" r="3" fill="#ff8fb1" stroke="none" opacity=".7"/><circle cx="17" cy="4" r="3" fill="#ff8fb1" stroke="none" opacity=".7"/></g>`,
+  // 3: round glasses + grin (studious)
+  (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><circle cx="-10" cy="-4" r="7.5" fill="#ffffffcc" stroke="${INK}" stroke-width="2"/><circle cx="10" cy="-4" r="7.5" fill="#ffffffcc" stroke="${INK}" stroke-width="2"/><path d="M-2.5 -4 H2.5" stroke="${INK}" stroke-width="2"/><circle cx="-10" cy="-4" r="2.6" fill="${INK}"/><circle cx="10" cy="-4" r="2.6" fill="${INK}"/><path d="M-7 8 Q0 14 7 8" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/></g>`,
+  // 4: wink + tongue
+  (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><circle cx="-10" cy="-4" r="4.2" fill="${INK}"/><circle cx="-8.7" cy="-5.6" r="1.3" fill="#fff"/><path d="M5 -4 Q10 -8 15 -4" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M-8 5 Q0 13 8 5" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M-1 9 Q2 15 5 9" fill="#ff6f91" stroke="${INK}" stroke-width="1.2"/></g>`,
+];
+
+function fractalCard(i) {
+  const body = BODIES[Math.floor(i / 5)](), face = FACES[i % 5];
+  const plate = body.plate ? `<circle cx="${body.cx}" cy="${body.plateY || body.cy}" r="${body.plateR || 22}" fill="${CREAM}" opacity=".85"/>` : '';
+  return `<svg viewBox="0 0 160 160" role="img" aria-label="Fractal buddy ${i + 1}">${body.svg}${plate}${face(body.cx, body.cy, body.s)}</svg>`;
+}
+
+// ---------- ducks: 5 styles x 10 props (facing left, lime feather tuft = Openpage)
+const Y = '#ffd23f', YD = '#e0a800', BEAK = '#ff8c1a';
+const STYLES = [
+  // 0 classic round toy
+  { body: `<ellipse cx="88" cy="108" rx="50" ry="32" fill="${Y}" stroke="${YD}" stroke-width="2"/><path d="M128 96 Q148 86 140 110 Z" fill="${Y}" stroke="${YD}" stroke-width="2"/>`, head: [62, 62, 26], wing: `<path d="M80 100 Q100 92 112 106 Q98 122 80 112 Z" fill="${YD}" opacity=".55"/>` },
+  // 1 flat geometric
+  { body: `<polygon points="40,96 70,82 130,88 146,74 140,112 112,136 60,134" fill="${Y}" stroke="${YD}" stroke-width="2" stroke-linejoin="round"/>`, head: [62, 60, 24], wing: `<polygon points="82,98 116,96 104,120" fill="${YD}" opacity=".6"/>`, squareHead: true },
+  // 2 line art
+  { body: `<path d="M40 104 Q42 140 92 138 Q138 136 140 104 Q146 84 128 96 Q110 86 70 90" fill="none" stroke="${LINE}" stroke-width="3" stroke-linecap="round"/>`, head: [62, 62, 25], wing: `<path d="M82 104 Q100 98 112 110 Q98 122 84 114" fill="none" stroke="${LINE}" stroke-width="2.5" stroke-linecap="round"/>`, line: true },
+  // 3 chubby baby (big head)
+  { body: `<ellipse cx="90" cy="116" rx="44" ry="28" fill="${Y}" stroke="${YD}" stroke-width="2"/><path d="M126 106 Q142 98 136 120 Z" fill="${Y}" stroke="${YD}" stroke-width="2"/>`, head: [66, 64, 34], wing: `<ellipse cx="96" cy="114" rx="16" ry="10" fill="${YD}" opacity=".5"/>` },
+  // 4 fractal wing (scalloped feathers in shrinking rows)
+  { body: `<ellipse cx="88" cy="108" rx="50" ry="31" fill="${Y}" stroke="${YD}" stroke-width="2"/><path d="M128 96 Q148 86 140 110 Z" fill="${Y}" stroke="${YD}" stroke-width="2"/>`, head: [62, 62, 26], wing: (() => { let s = ''; let r = 9; let y = 100; for (let row = 0; row < 3; row++) { for (let k = 0; k < 4 - row; k++) s += `<circle cx="${84 + k * r * 1.6 + row * 5}" cy="${y}" r="${r}" fill="${DEEP}" opacity="${0.35 + row * 0.15}"/>`; r *= 0.7; y += 8; } return s; })() },
+];
+const tuft = (hx, hy, hr) => `<path d="M${hx - 2} ${hy - hr + 2} q-4 -14 6 -16 q-2 8 4 10 q4 -10 10 -6 q-8 4 -6 12 z" fill="${LIME}" stroke="${DEEP}" stroke-width="1.2" stroke-linejoin="round"/>`;
+const PROPS = [
+  () => '',
+  // graduation cap
+  (hx, hy, hr) => `<polygon points="${hx - 26},${hy - hr + 4} ${hx},${hy - hr - 8} ${hx + 26},${hy - hr + 4} ${hx},${hy - hr + 14}" fill="${INK}"/><rect x="${hx - 12}" y="${hy - hr + 6}" width="24" height="8" fill="${INK}"/><path d="M${hx + 22} ${hy - hr + 4} v14" stroke="${LIME}" stroke-width="2"/><circle cx="${hx + 22}" cy="${hy - hr + 19}" r="2.5" fill="${LIME}"/>`,
+  // round glasses
+  (hx, hy) => `<circle cx="${hx - 9}" cy="${hy - 4}" r="8" fill="#ffffff66" stroke="${INK}" stroke-width="2"/><circle cx="${hx + 9}" cy="${hy - 4}" r="8" fill="#ffffff66" stroke="${INK}" stroke-width="2"/><path d="M${hx - 1} ${hy - 4} h2" stroke="${INK}" stroke-width="2"/>`,
+  // pencil tucked behind head
+  (hx, hy, hr) => `<g transform="rotate(-35 ${hx + 18} ${hy - hr})"><rect x="${hx + 4}" y="${hy - hr - 4}" width="34" height="7" fill="${LIME}" stroke="${DEEP}" stroke-width="1"/><polygon points="${hx + 38},${hy - hr - 4} ${hx + 46},${hy - hr - 0.5} ${hx + 38},${hy - hr + 3}" fill="#f6d7a7" stroke="${DEEP}" stroke-width="1"/><rect x="${hx}" y="${hy - hr - 4}" width="5" height="7" fill="#ff8fb1"/></g>`,
+  // headphones
+  (hx, hy, hr) => `<path d="M${hx - hr + 2} ${hy} A${hr} ${hr} 0 0 1 ${hx + hr - 2} ${hy}" fill="none" stroke="${INK}" stroke-width="4"/><rect x="${hx - hr - 4}" y="${hy - 6}" width="9" height="16" rx="4" fill="${LIME}" stroke="${INK}" stroke-width="1.5"/><rect x="${hx + hr - 5}" y="${hy - 6}" width="9" height="16" rx="4" fill="${LIME}" stroke="${INK}" stroke-width="1.5"/>`,
+  // scarf
+  (hx, hy, hr) => `<path d="M${hx - 18} ${hy + hr - 6} Q${hx} ${hy + hr + 6} ${hx + 20} ${hy + hr - 6} l2 8 Q${hx} ${hy + hr + 16} ${hx - 20} ${hy + hr + 2} z" fill="${MINT}" stroke="${DEEP}" stroke-width="1.2"/><path d="M${hx + 12} ${hy + hr} l6 18 l-8 0 z" fill="${MINT}" stroke="${DEEP}" stroke-width="1.2"/>`,
+  // bow tie
+  (hx, hy, hr) => `<g transform="translate(${hx + 4} ${hy + hr + 2})"><polygon points="-12,-6 0,0 -12,6" fill="${LIME}" stroke="${DEEP}" stroke-width="1.2"/><polygon points="12,-6 0,0 12,6" fill="${LIME}" stroke="${DEEP}" stroke-width="1.2"/><circle r="2.6" fill="${DEEP}"/></g>`,
+  // notebook held by wing
+  () => `<g transform="rotate(-8 100 112)"><rect x="86" y="96" width="34" height="26" rx="2" fill="#fff" stroke="${INK}" stroke-width="1.6"/><path d="M90 104 h26 M90 110 h26 M90 116 h18" stroke="#9cc0ff" stroke-width="1.4"/><path d="M92 104 q4 -3 7 0 t7 0" stroke="${DEEP}" stroke-width="1.4" fill="none"/></g>`,
+  // pi badge
+  () => `<circle cx="104" cy="108" r="11" fill="${LIME}" stroke="${DEEP}" stroke-width="1.5"/><text x="104" y="112.5" text-anchor="middle" font: font-family="Georgia, serif" font-size="13" font-weight="700" fill="${INK}">π</text>`,
+  // fractal sprout (tiny Koch flake balloon)
+  () => { let p = [[0, -10], [8.66, 5], [-8.66, 5]]; for (let k = 0; k < 2; k++) { const q = []; for (let i = 0; i < p.length; i++) { const [ax, ay] = p[i], [bx, by] = p[(i + 1) % p.length]; const dx = (bx - ax) / 3, dy = (by - ay) / 3; const c = [ax + dx, ay + dy], e = [ax + 2 * dx, ay + 2 * dy]; q.push([ax, ay], c, [c[0] + dx * 0.5 + dy * 0.866, c[1] + dy * 0.5 - dx * 0.866], e); } p = q; } return `<path d="M128 96 Q138 60 132 34" stroke="${DEEP}" stroke-width="1.5" fill="none"/><g transform="translate(132 26)"><polygon points="${pts(p)}" fill="${LIME}" stroke="${DEEP}" stroke-width="1"/></g>`; },
+];
+
+function duckCard(i) {
+  const st = STYLES[Math.floor(i / 10)], prop = PROPS[i % 10];
+  const [hx, hy, hr] = st.head;
+  const head = st.line
+    ? `<circle cx="${hx}" cy="${hy}" r="${hr}" fill="none" stroke="${LINE}" stroke-width="3"/>`
+    : st.squareHead
+      ? `<rect x="${hx - hr}" y="${hy - hr}" width="${hr * 2}" height="${hr * 2}" rx="${hr * 0.45}" fill="${Y}" stroke="${YD}" stroke-width="2"/>`
+      : `<circle cx="${hx}" cy="${hy}" r="${hr}" fill="${Y}" stroke="${YD}" stroke-width="2"/>`;
+  const beak = st.line
+    ? `<path d="M${hx - hr + 2} ${hy + 2} q-18 2 -20 8 q10 4 20 0" fill="none" stroke="${BEAK}" stroke-width="3" stroke-linejoin="round"/>`
+    : `<path d="M${hx - hr + 4} ${hy - 1} q-20 -1 -22 8 q12 8 24 2 z" fill="${BEAK}" stroke="#c86400" stroke-width="1.4" stroke-linejoin="round"/>`;
+  const eye = `<circle cx="${hx - 8}" cy="${hy - 6}" r="${hr > 30 ? 5.5 : 4.2}" fill="${st.line ? LINE : INK}"/><circle cx="${hx - 6.6}" cy="${hy - 7.6}" r="1.5" fill="#fff"/>`;
+  const cheek = st.line ? '' : `<circle cx="${hx + 6}" cy="${hy + 8}" r="4" fill="#ff9f6b" opacity=".45"/>`;
+  return `<svg viewBox="0 0 160 160" role="img" aria-label="Duck ${i + 1}">${st.body}${st.wing}${head}${tuft(hx, hy, hr)}${beak}${eye}${cheek}${prop(hx, hy, hr)}</svg>`;
+}
+
+const fill = (id, prefix, n, make) => {
+  document.getElementById(id).innerHTML = Array.from({ length: n }, (_, i) =>
+    `<figure>${make(i)}<figcaption><b>${prefix}${String(i + 1).padStart(2, '0')}</b></figcaption></figure>`).join('');
+};
+fill('fractals', 'F', 50, fractalCard);
+fill('ducks', 'D', 50, duckCard);
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050705">
+<meta name="description" content="Openpage: free note-taking with handwriting, PDF annotation, audio recordings synced to your notes, and AI study tools. Works offline.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Openpage">
+<!-- Network lock-down: the app may only load its own files, and reach outside services only for features you turn on (Claude AI with your key, YouTube notes). No analytics, ads or trackers. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' openpage:; script-src 'self' openpage: blob: 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com; worker-src 'self' openpage: blob:; connect-src 'self' openpage: blob: data: https://api.anthropic.com https://cdn.jsdelivr.net; img-src 'self' openpage: data: blob: https://i.ytimg.com; media-src 'self' openpage: blob: data: mediastream:; style-src 'self' openpage: 'unsafe-inline'; font-src 'self' openpage: data:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="styles.css">
+<title>Openpage</title>
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+<div id="library" class="view">
+  <aside id="sidebar">
+    <div class="brand"><img src="icons/design/mark.png" alt=""><span class="app-name">Openpage</span><span class="brand-version">v1.0</span><span class="spacer"></span>
+      <button id="btn-sync" class="icon-btn small" title="Sync folder" aria-label="Sync folder" data-icon="sync" hidden></button>
+      <button id="btn-settings" class="icon-btn small" aria-label="Settings" title="Settings" data-icon="gear"></button></div>
+    <label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="Search everything…" aria-label="Search notes"><kbd class="kbd">⌘K</kbd></label>
+    <div class="library-label">LIBRARY</div>
+    <nav id="nav"></nav>
+    <div class="new-links">
+      <button id="btn-new-subject" class="new-link"><span data-icon="plus"></span>New subject</button>
+      <button id="btn-new-divider" class="new-link quiet">+ Divider</button>
+    </div>
+    <span class="side-spacer"></span>
+    <div id="lib-mascot" class="lib-mascot" aria-hidden="true"></div>
+    <div class="storage-card">
+      <div class="storage-row"><span class="storage-dot"></span><span id="storage-label">ON THIS DEVICE</span>
+        </div>
+      <div class="storage-bar"><span id="storage-fill"></span></div>
+      <p id="storage-detail">Notes are saved on this device</p>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+  <main id="lib-main">
+    <header class="lib-head">
+      <button id="btn-menu" class="icon-btn only-narrow" aria-label="Show subjects" data-icon="menu"></button>
+      <div class="library-heading"><p class="library-eyebrow" id="lib-crumb">LIBRARY / ALL NOTES</p><h1 id="lib-title">All Notes</h1></div>
+      <button id="btn-density" class="head-btn" aria-label="Larger cards" title="Card size" aria-pressed="false"><span class="ic" style="--src:url(icons/design/icon-grid.svg)"></span></button>
+      <button id="btn-view" class="head-btn" aria-label="Sort and filter" title="Sort and filter"><span class="ic" style="--src:url(icons/design/icon-sliders.svg)"></span><span class="head-dot" hidden></span></button>
+      <button id="btn-new" class="btn primary"><span data-icon="plus"></span><span class="label">New Note</span></button>
+    </header>
+    <div class="library-content">
+      <section id="continue-card" class="continue-card" aria-label="Continue your work">
+        <img class="continue-art" src="icons/design/continue.png" alt="">
+        <div class="continue-content"><p class="library-eyebrow" id="continue-label">A LITTLE SPACE FOR BIG IDEAS</p>
+          <h2 id="continue-title">Make room for your next idea.</h2>
+          <p id="continue-detail">Handwrite, annotate, and bring your thinking together.</p>
+          <div class="continue-actions"><button id="btn-continue" class="btn primary"><span data-icon="pen"></span><span id="continue-btn-label">Create your first note</span></button>
+            <button id="btn-continue-audio" class="audio-chip" hidden><span data-icon="play"></span><span id="continue-audio-label"></span></button></div>
+        </div>
+        <p class="continue-coords" aria-hidden="true">re −0.7453  ·  im +0.1127  ·  zoom ×280</p>
+      </section>
+      <p id="note-count" class="visually-hidden" aria-live="polite"></p>
+      <div id="grid" class="grid"></div>
+      <div id="empty" class="empty" hidden></div>
+    </div>
+  </main>
+</div>
+
+<div id="workspace" class="view" hidden></div>
+
+<template id="tpl-editor">
+  <section class="pane">
+    <header class="ed-top">
+      <div class="ed-left">
+        <button class="icon-btn" data-act="back" title="Library" data-icon="back"></button>
+        <button class="icon-btn" data-act="pages" title="Page manager" data-icon="pages"></button>
+        <input class="ed-title" spellcheck="false" aria-label="Note title">
+      </div>
+      <div class="floating-palette"><div class="tool-strip"><div class="tools" role="toolbar" aria-label="Writing toolbox">
+        <button data-tool="pen" title="Pen (P)" data-icon="pen"></button>
+        <button data-act="pencil" title="Pencil" aria-label="Pencil" data-icon="pencil"></button>
+        <button data-tool="highlighter" title="Highlighter (H)" data-icon="highlighter"></button>
+        <button data-tool="eraser" title="Eraser (E)" data-icon="eraser"></button>
+        <button data-tool="lasso" title="Lasso (L)" data-icon="lasso"></button>
+        <button data-tool="text" title="Text (T)" data-icon="text"></button>
+        <button data-tool="laser" title="Laser pointer" data-icon="laser"></button>
+        <button data-tool="navigate" title="Navigate: drag to pan" aria-label="Navigate" data-icon="hand"></button>
+        <button data-act="zoom-tool" title="Zoom controls" aria-label="Zoom" data-icon="search"></button>
+        <button data-tool="tape" title="Study tape: draw to cover, tap tape to reveal" aria-label="Study tape" data-icon="tape"></button>
+        <button data-tool="ruler" title="Ruler: draw straight lines" aria-label="Ruler" data-icon="ruler"></button>
+        <button data-act="stickers" title="Stickers" aria-label="Stickers" data-icon="sticker"></button>
+        <span class="sep"></span>
+        <button data-act="shapes" title="Shape recognition (or draw and hold)" data-icon="shapes"></button>
+        <button data-act="add" title="Insert: page, image, camera, scan, files" data-icon="plus"></button>
+        <button class="icon-btn" data-act="record" title="Record audio" data-icon="mic"></button>
+      </div><button class="tool-next" data-act="tool-next" aria-label="Show more tools" title="More tools">›</button></div>
+    <div class="ed-tools">
+      <div class="tool-opts"></div>
+      <button class="icon-btn palette-settings" data-act="tool-settings" title="Tool settings" aria-label="Tool settings" aria-expanded="false" data-icon="gear"></button>
+      <div class="zoom">
+        <button class="icon-btn small" data-act="zoom-out" title="Zoom out" data-icon="minus"></button>
+        <button class="zoom-label" data-act="zoom-fit" title="Fit width">100%</button>
+        <button class="icon-btn small" data-act="zoom-in" title="Zoom in" data-icon="plus"></button>
+      </div>
+    </div>
+      </div>
+      <div class="ed-right">
+        <div class="rec-ind" hidden><span class="rec-dot"></span><span class="rec-time">0:00</span></div>
+        <button class="icon-btn" data-act="undo" title="Undo (Ctrl/Cmd+Z)" data-icon="undo"></button>
+        <button class="icon-btn" data-act="redo" title="Redo (Shift+Ctrl/Cmd+Z)" data-icon="redo"></button>
+        <button class="icon-btn" data-act="ai" title="Learn: AI chat, summaries and study tools" aria-label="Open Learn" data-icon="spark"></button>
+        <button class="icon-btn" data-act="outline" title="Outline and pages" aria-label="Open outline and pages" data-icon="pages"></button>
+        <button class="icon-btn" data-act="panel" title="Panel: audio, AI, study, find, history" data-icon="panel"></button>
+        <button class="icon-btn" data-act="share" title="Share &amp; export" data-icon="share"></button>
+        <button class="icon-btn" data-act="more" title="More" data-icon="more"></button>
+      </div>
+    </header>
+    <div class="video-bar" hidden></div>
+    <div class="ed-body">
+      <aside class="page-manager" hidden></aside>
+      <div class="scroller"><div class="pages"></div></div>
+      <aside class="side" hidden></aside>
+    </div>
+    <div class="replay-banner" hidden>Replay: tap your notes to jump to that moment</div>
+    <div class="selmenu" hidden></div>
+  </section>
+</template>
+
+<input type="file" id="file-input" hidden>
+<div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
