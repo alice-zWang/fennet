@@ -19,6 +19,15 @@ import { pickColor } from './colorpicker.js';
 import { syncSupported, chooseSyncFolder, syncFolder, forgetSyncFolder, syncNow, removeFromSync } from './sync.js';
 
 const RECENT_MS = 7 * 864e5;
+// "Edited today / yesterday / Mon / Oct 3" for library cards
+const edited = (ts) => {
+  const d = new Date(ts), now = new Date(), day = 864e5;
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (ts >= startToday) return 'Edited today, ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (ts >= startToday - day) return 'Edited yesterday';
+  if (ts >= startToday - 6 * day) return 'Edited ' + d.toLocaleDateString([], { weekday: 'long' });
+  return 'Edited ' + d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
+};
 // "OCT 16 · 14:20", the library's compact date stamp
 const stamp = (ts) => {
   const d = new Date(ts);
@@ -50,6 +59,7 @@ class App {
     hydrateIcons(document);
     this.applyInputMode();
     applyMascotSetting();
+    document.body.classList.toggle('reduce-card-motion', prefs.get('reduceCardMotion', false));
     $('#lib-mascot').append(mascot('lib'));
     await initSecurity();
     await this.load();
@@ -552,13 +562,13 @@ class App {
       const thumb = h('div', { class: 'thumb' });
       if (n.thumb) thumb.style.backgroundImage = `url("${n.thumb}")`;
       const pages = n.pageCount || 1;
-      thumb.append(h('span', { class: 'page-badge', title: `${pages} ${pages === 1 ? 'page' : 'pages'}` }, `${String(pages).padStart(2, '0')} PP`));
+      thumb.append(h('span', { class: 'page-badge' }, `${pages} ${pages === 1 ? 'page' : 'pages'}`));
       if (n.favorite) thumb.append(h('span', { class: 'fav', html: icon('star') }));
       if (n.hasAudio) { const r = h('span', { class: 'rec', html: icon('mic') }); r.append('AUDIO'); thumb.append(r); }
       const more = h('button', { class: 'icon-btn small', title: 'Note options', 'aria-label': n.title + ' options', html: icon('more') });
       const sub = h('div', { class: 'sub', title: s ? s.name : 'Unfiled' });
       sub.append(h('span', { class: 'dot' + (s ? '' : ' plain'), style: s ? { background: s.color } : {} }));
-      sub.append((trash ? 'DELETED ' : '') + stamp(trash ? n.deleted : n.updated));
+      sub.append(h('span', { class: 'sub-text' }, (s ? s.name + ' · ' : '') + (trash ? 'Deleted ' + stamp(n.deleted).toLowerCase() : edited(n.updated))));
       const card = h('div', { class: 'card', 'data-id': n.id, tabindex: 0, draggable: trash ? 'false' : 'true', role: 'button', 'aria-label': `${n.title}, ${s ? s.name + ', ' : ''}${pages} ${pages === 1 ? 'page' : 'pages'}` },
         thumb, h('div', { class: 'meta' }, h('div', { class: 'txt' }, h('div', { class: 'title' }, n.title), sub), more));
       card.onclick = (e) => {
@@ -885,10 +895,12 @@ class App {
       title: 'Settings',
       body: (b) => {
         // ----- General
-        const general = sec('general', 'General',
-          h('div', { class: 'row' }, h('small', {}, 'Appearance'), seg('theme', 'system', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], () => this.applyTheme())),
+        const appearance = sec('appearance', 'Appearance',
+          h('div', { class: 'row' }, h('small', {}, 'Theme'), seg('theme', 'system', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], () => this.applyTheme())),
           h('small', {}, 'Accent color'), this.accentPicker(),
           check('mascot', true, 'Show the mascot (its face follows what you do)', applyMascotSetting),
+          check('reduceCardMotion', false, 'Reduce card motion (flashcards change without flipping)', (v) => document.body.classList.toggle('reduce-card-motion', v)));
+        const general = sec('writing', 'Writing & Pencil',
           h('small', {}, 'Drawing input'),
           select('inputMode', 'auto', [['auto', 'Automatic (fingers scroll once a stylus is used)'], ['finger', 'Finger and stylus both write'], ['stylus', 'Stylus only (fingers scroll)']], () => this.applyInputMode()),
           h('small', {}, 'Two fingers always scroll and pinch-zoom. Your palm is ignored while writing with a stylus.'));
@@ -907,7 +919,8 @@ class App {
           key, select('ai.model', 'claude-opus-5-5', CLAUDE_MODELS));
         const devNote = h('small', {}, deviceModelAPI() ? 'Uses the AI model built into this browser. Free and private, but text only (it cannot read handwriting from page images) and less capable.' : 'This browser has no built-in AI model (needs Chrome 138+ on desktop).');
         const showProv = () => { const p = prefs.get('ai.provider', 'claude'); claudeBox.hidden = p !== 'claude'; devNote.hidden = p !== 'device'; };
-        const ai = sec('ai', 'AI (summaries, flashcards, quizzes, chat, smart notes, math)',
+        const ai = sec('learn', 'Learn & AI',
+          h('small', {}, 'Summaries, flashcards, quizzes, chat, Smart Notes and Math → LaTeX. Off unless you choose a provider.'),
           seg('ai.provider', 'claude', [['claude', 'Claude'], ['device', 'On-device'], ['off', 'Off']], showProv),
           claudeBox, devNote,
           check('smartNotes', true, 'Live Smart Notes while recording (needs live transcription)'));
@@ -915,9 +928,9 @@ class App {
 
         // ----- Handwriting & audio
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const hw = sec('handwriting', 'Handwriting & audio',
-          check('ocr', true, 'Handwriting recognition (makes handwriting searchable)'),
-          h('small', {}, 'Runs on this device. The first time, it downloads a ~10 MB recognition model.'),
+        general.append(check('ocr', true, 'Handwriting recognition (makes handwriting searchable)'),
+          h('small', {}, 'Runs on this device. The first time, it downloads a ~10 MB recognition model.'));
+        const hw = sec('audio', 'Audio',
           check('transcribe', false, SR ? 'Live transcription while recording' : 'Live transcription (not supported in this browser)'),
           h('small', {}, 'Uses the browser\'s speech recognition. Some browsers (e.g. Chrome) send the audio to the browser maker\'s servers for this.'));
 
@@ -970,10 +983,34 @@ class App {
           `${APP_NAME} is free, independent software. It is not affiliated with, endorsed by, or sponsored by Ginger Labs or the Notability app. ` +
           'Open-source components: PDF.js (Apache-2.0), jsPDF (MIT), Tesseract.js (Apache-2.0), Mammoth (BSD-2), JSZip (MIT), Anthropic TypeScript SDK (MIT).'));
 
-        b.append(general, securitySettings(), collabSettings(this), ai, hw, data, install, about);
-        if (section) setTimeout(() => { const el = b.querySelector(`[data-sec="${section}"]`); el && el.scrollIntoView({ block: 'start' }); }, 50);
+        // one section at a time, chosen from tabs that stay at the top
+        const groups = [
+          ['appearance', 'Appearance', [appearance]], ['writing', 'Writing & Pencil', [general]], ['learn', 'Learn & AI', [ai]],
+          ['audio', 'Audio', [hw]], ['storage', 'Storage & sync', [data, collabSettings(this), install]],
+          ['privacy', 'Privacy', [securitySettings()]], ['about', 'About', [about]],
+        ];
+        const alias = { general: 'appearance', ai: 'learn', handwriting: 'writing', sync: 'storage', collab: 'storage', security: 'privacy', install: 'storage' };
+        let current = alias[section] || section || prefs.get('settingsTab', 'appearance');
+        if (!groups.some(([id]) => id === current)) current = 'appearance';
+        const nav = h('div', { class: 'settings-nav', role: 'tablist', 'aria-label': 'Settings sections' });
+        const panel = h('div', { class: 'settings-panel', role: 'tabpanel' });
+        const show = (id) => {
+          current = id; prefs.set('settingsTab', id);
+          for (const btn of nav.children) { const on = btn.dataset.id === id; btn.classList.toggle('on', on); btn.setAttribute('aria-selected', String(on)); }
+          panel.replaceChildren(...groups.find(([g]) => g === id)[2]);
+          panel.scrollTop = 0;
+        };
+        for (const [id, label] of groups) {
+          const btn = h('button', { type: 'button', role: 'tab', 'data-id': id }, label);
+          btn.onclick = () => show(id);
+          nav.append(btn);
+        }
+        b.append(nav, panel);
+        show(current);
+        setTimeout(() => nav.querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' }), 30);
       },
       actions: [{ label: 'Done', value: true, primary: true }],
+      cls: 'settings-modal',
     });
   }
 }

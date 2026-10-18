@@ -32,7 +32,9 @@ let open = null;
 export function closeColorPicker() { if (open) open(null); }
 
 /** Opens near `anchor`. Resolves with "#rrggbb" or null. onChange fires live while picking. */
-export function pickColor(anchor, initial = '#1f2328', { onChange, title = 'Color' } = {}) {
+// slots: { colors: [...6 hex], index } shows the palette's color slots at the top; tapping one picks
+// which slot to replace (slots.index is updated) and loads its color into the picker.
+export function pickColor(anchor, initial = '#1f2328', { onChange, title = 'Color', slots = null } = {}) {
   closeColorPicker();
   return new Promise((resolve) => {
     let [r, g, b] = hexToRgb(initial) || [31, 35, 40];
@@ -52,7 +54,19 @@ export function pickColor(anchor, initial = '#1f2328', { onChange, title = 'Colo
     const cancel = h('button', { class: 'btn small', type: 'button' }, 'Cancel');
     const save = h('button', { class: 'btn ghost small', type: 'button', title: 'Save this color' }, '+ Save');
 
-    pop.append(h('div', { class: 'cp-title' }, title), sv, hueBar,
+    const slotRow = slots ? h('div', { class: 'cp-slots', role: 'radiogroup', 'aria-label': 'Color slot to change' }) : null;
+    const drawSlots = () => {
+      if (!slotRow) return;
+      slotRow.textContent = '';
+      slots.colors.forEach((c, i) => {
+        const on = i === slots.index;
+        const slotBtn = h('button', { type: 'button', class: 'swatch cp-slot' + (on ? ' on' : ''), role: 'radio', 'aria-checked': String(on),
+          'aria-label': `Slot ${i + 1}`, title: `Change slot ${i + 1}`, style: { background: on ? hex() : c } });
+        slotBtn.onclick = () => { slots.index = i; [r, g, b] = hexToRgb(c); fromRGB(); };
+        slotRow.append(slotBtn);
+      });
+    };
+    pop.append(h('div', { class: 'cp-title' }, title), ...(slotRow ? [h('div', { class: 'cp-slots-label' }, 'Tap the slot to change'), slotRow] : []), sv, hueBar,
       h('div', { class: 'cp-fields' }, preview, rl, gl, bl, h('label', { class: 'cp-num' }, h('span', {}, 'HEX'), hexIn)),
       h('div', { class: 'cp-saved-head' }, h('span', {}, 'Saved colors'), save), savedRow,
       h('div', { class: 'cp-actions' }, cancel, ok));
@@ -79,7 +93,7 @@ export function pickColor(anchor, initial = '#1f2328', { onChange, title = 'Colo
       if (from !== 'rgb') { ri.value = Math.round(r); gi.value = Math.round(g); bi.value = Math.round(b); }
       if (from !== 'hex') hexIn.value = hex();
       preview.style.background = hex();
-      drawSV(); drawHue();
+      drawSV(); drawHue(); drawSlots();
       onChange && onChange(hex());
     };
     const fromHSV = () => { [r, g, b] = hsvToRgb(hue, sat, val).map(Math.round); sync('hsv'); };

@@ -127,6 +127,10 @@ export class Editor {
     this.ocrSoon = debounce(() => this.indexAll(false), 4000);
     this.pmSoon = debounce(() => this.renderPageManager(), 800);
     this.root.querySelector('.ed-left').insertBefore(mascot('ed'), this.titleEl);
+    // quiet orientation: which page you're on, and a brief "Saved" after each save
+    this.pageChip = h('span', { class: 'page-chip', 'aria-live': 'polite' });
+    this.savedChip = h('span', { class: 'saved-chip', role: 'status' }, 'Saved');
+    this.titleEl.after(h('span', { class: 'ed-status' }, this.pageChip, this.savedChip));
     this.bindUI();
     this.bindPointer();
   }
@@ -202,6 +206,7 @@ export class Editor {
     n.searchText = (texts.join('\n') + '\n' + (this.doc.pdfText || '')).slice(0, 80000);
     await db.put('notes', n);
     this.app.noteChanged(n);
+    this.showSaved();
     if (Date.now() - (this.lastSnap || this.openedAt || 0) > VERSION_EVERY) this.snapshot(false);
   }
 
@@ -223,12 +228,17 @@ export class Editor {
       const t = e.target.closest('[data-act],[data-tool]');
       if (!t || !R.contains(t) || t.closest('.selmenu')) return;
       if (t.dataset.tool) {
+        const pencilOn = this.tool === 'pen' && this.opts.pen.brush === 'pencil';
+        if (this.tool === t.dataset.tool && !(t.dataset.tool === 'pen' && pencilOn)) return this.toolPopover(t);
         if (t.dataset.tool === 'pen' && this.opts.pen.brush === 'pencil') this.setOpt('pen', 'brush', this.previousPenBrush || 'ballpoint');
         return this.setTool(t.dataset.tool);
       }
       const acts = {
         'tool-next': () => { const strip = this.root.querySelector('.tools'); strip.scrollBy({ left: strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 8 ? -strip.scrollWidth : strip.clientWidth * .75, behavior: 'smooth' }); },
-        pencil: () => { if (this.opts.pen.brush !== 'pencil') this.previousPenBrush = this.opts.pen.brush; this.setOpt('pen', 'brush', 'pencil'); this.setTool('pen'); },
+        pencil: () => {
+          if (this.tool === 'pen' && this.opts.pen.brush === 'pencil') return this.toolPopover(t);
+          if (this.opts.pen.brush !== 'pencil') this.previousPenBrush = this.opts.pen.brush; this.setOpt('pen', 'brush', 'pencil'); this.setTool('pen');
+        },
         stickers: () => this.stickerMenu(t),
         'zoom-tool': () => menu(t, [
           { label: 'Zoom in', icon: 'plus', action: () => this.zoomBy(1.2) },
@@ -243,10 +253,7 @@ export class Editor {
         ai: () => this.side.toggle('ai'),
         outline: () => this.side.toggle('outline'),
         more: () => this.moreMenu(t),
-        'tool-settings': () => {
-          const expanded = this.root.classList.toggle('tool-settings-open');
-          t.setAttribute('aria-expanded', String(expanded));
-        },
+        'tool-settings': () => this.toolPopover(t),
         undo: () => this.undo(),
         redo: () => this.redo(),
         add: () => this.addMenu(t),
@@ -345,6 +352,97 @@ export class Editor {
     this.renderOpts();
   }
 
+  // The palette's six color slots for a tool
+  colorSlots(tool) {
+    const key = 'palette-' + tool;
+    const defaults = tool === 'highlighter' ? [...HL_COLORS, '#b8ff2c'].slice(0, 6) : ['#1f2328', '#b8ff2c', '#d6283b', '#ffffff', '#ff00aa', '#16a085'];
+    const stored = prefs.get(key, defaults);
+    return Array.from({ length: 6 }, (_, i) => /^#[0-9a-f]{6}$/i.test(stored[i] || '') ? stored[i] : defaults[i]);
+  }
+
+  // "+": open the color picker straight away; the slots across its top choose which one to replace.
+  async editColor(tool, anchor) {
+    const slots = this.colorSlots(tool);
+    const cur = this.opts[tool].color;
+    const pick = { colors: slots, index: Math.max(0, slots.indexOf(cur)) };
+    const color = await pickColor(anchor, slots[pick.index], { title: 'Change a color', slots: pick });
+    if (!color) return;
+    slots[pick.index] = color;
+    prefs.set('palette-' + tool, slots);
+    this.setOpt(tool, 'color', color);
+  }
+
+  // Tap the active tool again (or the gear): Style, Thickness and Color in one popover.
+  toolPopover(anchor) {
+    const t = this.tool === 'ruler' ? 'pen' : this.tool;
+    if (!['pen', 'highlighter', 'eraser', 'text'].includes(t)) return;
+    const box = h('div', { class: 'tool-pop', role: 'dialog', 'aria-label': 'Tool settings' });
+    const draw = () => {
+      box.textContent = '';
+      const o = this.opts[t];
+      const sec = (label, ...kids) => box.append(h('div', { class: 'tp-sec' }, h('div', { class: 'tp-label' }, label), ...kids));
+      if (t === 'pen' || t === 'highlighter') {
+        const list = h('div', { class: 'tp-styles' });
+        for (const [id, name] of BRUSHES[t]) {
+          const on = o.brush === id;
+          const b = h('button', { type: 'button', class: 'tp-style' + (on ? ' on' : ''), 'aria-pressed': String(on) },
+            brushPreview({ tool: t, brush: id, color: o.color, size: t === 'pen' ? Math.max(2.2, Math.min(o.size, 5)) : o.size }, 88, 24), h('span', {}, name));
+          b.onclick = () => { this.setOpt(t, 'brush', id); draw(); };
+          list.append(b);
+        }
+        sec('Style', list);
+      }
+      if (t === 'eraser') {
+        const seg = h('div', { class: 'seg' });
+        for (const [m, label] of [['stroke', 'Whole stroke'], ['partial', 'Partial']]) {
+          const b = h('button', { type: 'button', class: o.mode === m ? 'on' : '' }, label);
+          b.onclick = () => { this.setOpt('eraser', 'mode', m); draw(); };
+          seg.append(b);
+        }
+        sec('Erase', seg);
+      }
+      if (t !== 'text') {
+        const [min, max, step] = SIZE_RANGE[t];
+        const range = h('input', { type: 'range', class: 'size-range', min, max, step, value: o.size, 'aria-label': 'Thickness' });
+        const num = h('span', { class: 'tp-num' }, String(o.size));
+        range.oninput = () => { num.textContent = range.value; };
+        range.onchange = () => { this.setOpt(t, 'size', +range.value); draw(); };
+        const presets = h('div', { class: 'tp-presets' });
+        for (const s of SIZES[t]) {
+          const d = t === 'highlighter' ? Math.min(18, Math.max(4, s * 0.6)) : t === 'eraser' ? Math.min(18, s * 0.4) : Math.min(18, Math.max(3, s * 1.6));
+          const b = h('button', { type: 'button', class: 'size-btn' + (o.size === s ? ' on' : ''), 'aria-label': 'Thickness ' + s }, h('span', { style: { width: d + 'px', height: d + 'px' } }));
+          b.onclick = () => { this.setOpt(t, 'size', s); draw(); };
+          presets.append(b);
+        }
+        sec('Thickness', h('div', { class: 'tp-row' }, range, num), presets);
+      }
+      if (t !== 'eraser') {
+        const row = h('div', { class: 'tp-colors' });
+        for (const c of this.colorSlots(t)) {
+          const b = h('button', { type: 'button', class: 'swatch color-slot' + (o.color === c ? ' on' : ''), 'aria-label': 'Color ' + c, style: { background: c } });
+          b.onclick = () => { this.setOpt(t, 'color', c); draw(); };
+          row.append(b);
+        }
+        const custom = h('button', { type: 'button', class: 'btn small' }, 'Change a color…');
+        custom.onclick = async () => { close(); await this.editColor(t, anchor); };
+        sec('Color', row, custom);
+      }
+      if (t === 'pen' || t === 'highlighter') {
+        const fav = h('button', { type: 'button', class: 'btn ghost small', html: icon('star') });
+        fav.append(' Save as favorite pen');
+        fav.onclick = () => {
+          const f = { tool: t, brush: o.brush, color: o.color, size: o.size };
+          prefs.set('favPens', [...prefs.get('favPens', []).filter((x) => JSON.stringify(x) !== JSON.stringify(f)), f].slice(-10));
+          toast('Saved to favorites');
+          this.renderOpts();
+        };
+        box.append(fav);
+      }
+    };
+    draw();
+    const close = popover(anchor, box, { cls: 'tool-popover' });
+  }
+
   setOpt(tool, key, val) {
     this.opts[tool][key] = val;
     prefs.set('toolOpts', this.opts);
@@ -383,14 +481,8 @@ export class Editor {
         b.onclick = () => this.setOpt(tool, 'color', c);
         el.append(b);
       });
-      const add = btn({ class: 'swatch add-color', title: 'Choose or edit a color slot', 'aria-label': 'Choose or add colors', html: icon('plus') });
-      add.onclick = () => menu(add, [
-        { heading: 'Choose a slot to customize' },
-        ...slots.map((c, i) => ({ label: `Color ${i + 1} · ${c}`, action: async () => {
-          const color = await pickColor(add, c, { title: `Color ${i + 1} · choose or add` });
-          if (color) { slots[i] = color; prefs.set(key, slots); this.setOpt(tool, 'color', color); }
-        } })),
-      ]);
+      const add = btn({ class: 'swatch add-color', title: 'Change a color', 'aria-label': 'Change a color in the palette', html: icon('plus') });
+      add.onclick = () => this.editColor(tool, add);
       el.append(add);
     };
     const sizes = (tool, list, dot) => {
@@ -522,6 +614,7 @@ export class Editor {
     this.pagesEl.append(add);
     this.applyLayout();
     for (const v of this.views) this.io.observe(v.el);
+    this.updatePageChip();
   }
 
   // Re-sync views after an undo/redo; full rebuild only if the page list changed.
@@ -715,12 +808,27 @@ export class Editor {
     }
     if (best !== this.curIdx && !this.pm.hidden) this.pm.querySelectorAll('.pm-page').forEach((b, i) => b.classList.toggle('cur', i === best));
     this.curIdx = best;
+    this.updatePageChip();
     if (this.sel) this.positionSelMenu();
     // Zoomed in, each page holds only part of itself: redraw when the screen moves past it.
     for (const v of this.views) if (v.rz && (v.reg.w < v.page.w || v.reg.h < v.page.h)) this.raster(v);
   }
 
   currentView() { return this.views[this.curIdx] || this.views[0]; }
+
+  updatePageChip() {
+    if (!this.pageChip || !this.doc) return;
+    const n = this.doc.pages.length;
+    this.pageChip.textContent = `${Math.min(this.curIdx + 1, n)} / ${n}`;
+    this.pageChip.title = `Page ${Math.min(this.curIdx + 1, n)} of ${n}`;
+  }
+
+  showSaved() {
+    if (!this.savedChip) return;
+    this.savedChip.classList.add('show');
+    clearTimeout(this.savedT);
+    this.savedT = setTimeout(() => this.savedChip.classList.remove('show'), 1600);
+  }
 
   // y coordinate (logical page units) at the centre of what's visible of page v
   visibleCenter(v) {

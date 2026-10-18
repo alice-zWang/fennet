@@ -123,6 +123,55 @@ const NOTES = [
     ],
   },
 ];
+// Sample study material (clearly part of the demo; real notes get theirs from AI).
+const card = (front, back, extra = {}) => ({ id: uid(), front, back, ...extra });
+const STUDY = {
+  'MP4G Practice · Set 3': () => ({
+    summary: '## Overview\nFinding an altitude in a 13-14-15 triangle by computing the area first.\n\n## Key points\n- **Heron\'s formula:** Area = √(s(s−a)(s−b)(s−c)), with s the semi-perimeter.\n- For 13-14-15: s = 21, Area = √(21·8·7·6) = 84.\n- **Area = ½ · base · height**, so the altitude to BC is h = 2·84 / 14 = **12**.\n\n## Terms\n- **Semi-perimeter:** half the perimeter, s = (a + b + c) / 2.\n- **Altitude:** the perpendicular segment from a vertex to the opposite side.',
+    study: {
+      cardsSource: 'Whole note (demo sample)',
+      cards: [
+        card('Heron\'s formula', 'Area = √(s(s−a)(s−b)(s−c)), where s is the semi-perimeter.', { page: 0 }),
+        card('Semi-perimeter of a 13-14-15 triangle', 's = (13 + 14 + 15) / 2 = 21'),
+        card('Area of the 13-14-15 triangle', '√(21·8·7·6) = √7056 = 84', { page: 0 }),
+        card('Area in terms of a base and its height', 'Area = ½ · base · height'),
+        card('Altitude from A to BC (BC = 14)', 'h = 2 · 84 / 14 = 12', { explanation: 'Solve 84 = ½ · 14 · h for h.', page: 0 }),
+        card('What is an altitude?', 'The perpendicular segment from a vertex to the line containing the opposite side.'),
+        card('The 13-14-15 triangle splits into two right triangles with legs…', '5-12-13 and 9-12-15 (the altitude 12 is shared).'),
+        card('Why compute the area first?', 'Area links all three sides (Heron) to any one altitude (½ · base · height).'),
+        card('Altitude to the side of length 13', 'h = 2 · 84 / 13 = 168/13 ≈ 12.92'),
+        card('Altitude to the side of length 15', 'h = 2 · 84 / 15 = 11.2'),
+        card('Inradius r of the 13-14-15 triangle', 'r = Area / s = 84 / 21 = 4'),
+        card('Circumradius R of the 13-14-15 triangle', 'R = abc / (4·Area) = 2730 / 336 = 65/8'),
+      ],
+      quizSource: 'Whole note (demo sample)',
+      quiz: [
+        { question: 'What is the semi-perimeter of a triangle with sides 13, 14, 15?', choices: ['21', '42', '14', '19.5'], answer: 0, explanation: 's = (13 + 14 + 15) / 2 = 21.' },
+        { question: 'What is the area of the 13-14-15 triangle?', choices: ['72', '84', '91', '105'], answer: 1, explanation: '√(21·8·7·6) = √7056 = 84.' },
+        { question: 'What is the altitude to the side of length 14?', choices: ['10', '11.2', '12', '13'], answer: 2, explanation: '84 = ½ · 14 · h gives h = 12.' },
+        { question: 'What is the inradius?', choices: ['3', '4', '5', '6'], answer: 1, explanation: 'r = Area / s = 84 / 21 = 4.' },
+        { question: 'Which pair of right triangles does the altitude to BC create?', choices: ['3-4-5 and 6-8-10', '5-12-13 and 9-12-15', '8-15-17 and 7-24-25', '6-8-10 and 9-12-15'], answer: 1, explanation: 'BC = 14 splits into 5 + 9 with the shared height 12.' },
+      ],
+      blanksSource: 'Whole note (demo sample)',
+      blanks: [
+        { prompt: 'Heron\'s formula uses the ___ s = (a + b + c) / 2.', answer: 'semi-perimeter', explanation: 'Half the perimeter.' },
+        { prompt: 'Area = ½ · base · ___.', answer: 'height', explanation: 'The altitude to that base.' },
+        { prompt: 'The 13-14-15 triangle has area ___.', answer: '84', explanation: '√(21·8·7·6).' },
+        { prompt: 'The altitude from A to BC is ___.', answer: '12', explanation: '2·84 / 14.' },
+      ],
+    },
+  }),
+  'Modular arithmetic tricks': () => ({
+    summary: '## Overview\nUsing a small power that is ≡ 1 to find last digits of huge powers.\n\n## Key points\n- a ≡ b (mod n) means n divides a − b.\n- 7⁴ = 2401 ≡ 1 (mod 100), so powers of 7 repeat every 4 steps mod 100.\n- 2026 = 4·506 + 2, so 7²⁰²⁶ ≡ 7² = **49** (mod 100).',
+    study: { cardsSource: 'Whole note (demo sample)', cards: [
+      card('a ≡ b (mod n) means…', 'n divides a − b.'),
+      card('7⁴ mod 100', '2401 ≡ 1 (mod 100)'),
+      card('Last two digits of 7²⁰²⁶', '49, since 2026 ≡ 2 (mod 4) and 7² = 49.'),
+      card('Why reduce the exponent mod 4?', 'Because 7⁴ ≡ 1, powers of 7 repeat with period 4 mod 100.'),
+    ] },
+  }),
+};
+
 const SUBJECTS = [['Geometry', '#b8ff2c'], ['Number Theory', '#4ee6c8'], ['Combinatorics', '#ffb547'], ['Biology 101', '#ff6fcf']];
 
 // Fresh sample library + demo-friendly settings. Runs before anything is shown.
@@ -149,6 +198,13 @@ export async function setupDemo(app) {
     note.pageCount = pages.length;
     await db.put('notes', note);
   }
+  // ready-made study material for the first two notes, so Learn can be explored without AI
+  const notes = await db.all('notes');
+  for (const [title, extra] of Object.entries(STUDY)) {
+    const n = notes.find((x) => x.title === title);
+    const c = n && await db.get('content', n.id);
+    if (c) { Object.assign(c, extra()); await db.put('content', c); }
+  }
   document.documentElement.classList.add('demo');
   return true;
 }
@@ -156,10 +212,10 @@ export async function setupDemo(app) {
 // After the library is ready: open the screen the link asks for.
 export async function openDemoView(app) {
   if (!DEMO) return;
-  const banner = document.createElement('div');
-  banner.className = 'demo-banner';
-  banner.textContent = 'Demo · sample notes · changes aren\'t saved';
-  document.body.append(banner);
+  // label the demo quietly in the brand row instead of a badge floating over content
+  const v = document.querySelector('.brand-version');
+  if (v) { v.textContent = 'demo'; v.title = 'Demo: sample notes, changes aren\'t saved'; }
+  document.title = 'Openpage demo';
   const n = parseInt(params.get('note'), 10);
   if (n >= 1 && n <= NOTES.length) {
     const note = (await db.all('notes')).find((x) => x.title === NOTES[n - 1].title);

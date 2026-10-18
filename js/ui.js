@@ -41,9 +41,9 @@ export function menu(anchor, items, { x, y } = {}) {
 
 // Generic modal. body: Node or (bodyEl) => void. actions: [{label, value, primary, danger}]
 // Resolves with the clicked action's value, or null if dismissed.
-export function modal({ title, body, actions = [{ label: 'OK', value: true, primary: true }], onOpen, wide = false }) {
+export function modal({ title, body, actions = [{ label: 'OK', value: true, primary: true }], onOpen, wide = false, cls = '' }) {
   return new Promise((resolve) => {
-    const d = h('dialog', { class: 'modal' + (wide ? ' wide' : '') });
+    const d = h('dialog', { class: 'modal' + (wide ? ' wide' : '') + (cls ? ' ' + cls : '') });
     const form = h('form', { method: 'dialog' });
     const bodyEl = h('div', { class: 'body' });
     if (typeof body === 'function') body(bodyEl); else if (body) bodyEl.append(body);

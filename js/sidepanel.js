@@ -1,13 +1,15 @@
 // Right-hand panel in the editor: Recordings · AI · Study · Find · History
-import { h, toast, fmtTime, fmtDate, uid, blockedOut } from './util.js';
+import { h, toast, fmtTime, fmtDate, uid, blockedOut, prefs } from './util.js';
 import { icon } from './icons.js';
 import { db } from './db.js';
 import { ask, aiUnavailableReason, aiSupportsImages, AIError } from './ai.js';
 import { renderPageCanvas } from './render.js';
 import { textToPages } from './importers.js';
 import { confirmDlg, promptText } from './ui.js';
+import { studyStack } from './studystack.js';
 
-const TABS = [['outline', 'Outline', 'pages'], ['audio', 'Audio', 'wave'], ['ai', 'Learn', 'spark'], ['study', 'Study', 'cards'], ['find', 'Find', 'search'], ['history', 'History', 'clock']];
+// Learn holds summary, chat and practice (flashcards, quiz, fill-in-the-blank) in one place.
+const TABS = [['outline', 'Outline', 'pages'], ['audio', 'Audio', 'wave'], ['ai', 'Learn', 'spark'], ['find', 'Find', 'search'], ['history', 'History', 'clock']];
 
 // Minimal, safe Markdown → HTML (escape first, then a few patterns).
 export function md(src) {
@@ -74,19 +76,40 @@ export class SidePanel {
       b.onclick = () => this.open(id);
       this.nav.append(b);
     }
-    this.nav.append(close);
-    el.append(this.nav, this.body);
+    // collapse to a slim edge tab, and dock left or right (remembered)
+    const collapse = h('button', { class: 'icon-btn small side-collapse', title: 'Collapse panel', 'aria-label': 'Collapse panel', html: icon('chev') });
+    collapse.onclick = () => this.setCollapsed(true);
+    const dock = h('button', { class: 'icon-btn small side-dock', title: 'Move panel to the other side', 'aria-label': 'Move panel to the other side', html: icon('split') });
+    dock.onclick = () => { prefs.set('panelSide', prefs.get('panelSide', 'right') === 'right' ? 'left' : 'right'); this.applyDock(); };
+    this.edge = h('button', { class: 'side-edge', type: 'button', title: 'Show panel', 'aria-label': 'Show panel' });
+    this.edge.onclick = () => this.setCollapsed(false);
+    this.nav.append(h('span', { class: 'side-nav-tools' }, dock, collapse, close));
+    el.append(this.nav, this.body, this.edge);
+    this.applyDock();
+  }
+
+  applyDock() { this.ed.root.classList.toggle('side-left', prefs.get('panelSide', 'right') === 'left'); }
+
+  setCollapsed(on) {
+    this.collapsed = on;
+    this.ed.root.classList.toggle('side-collapsed', on);
+    const label = (TABS.find(([id]) => id === this.tab) || [])[1] || 'Panel';
+    this.edge.replaceChildren(h('span', { html: icon((TABS.find(([id]) => id === this.tab) || [])[2] || 'panel') }), h('span', { class: 'side-edge-label' }, label));
+    this.edge.setAttribute('aria-label', 'Show ' + label);
+    if (!on) this.nav.querySelector('[data-tab].on')?.focus?.();
   }
 
   get isOpen() { return !this.el.hidden; }
 
   open(tab) {
+    if (tab === 'study') { tab = 'ai'; this.learnView = 'practice'; }
     const prev = this.tab;
     this.tab = tab;
     this.ed.pm.hidden = true;
     this.ed.root.querySelector('[data-act="pages"]').classList.remove('on');
     this.el.hidden = false;
     this.ed.root.classList.add('side-open');
+    if (this.collapsed) this.setCollapsed(false);
     for (const b of this.nav.querySelectorAll('[data-tab]')) { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', String(b.dataset.tab === tab)); }
     if (prev === 'audio' && tab !== 'audio') this.ed.audioClosed();
     this.render();
@@ -99,6 +122,7 @@ export class SidePanel {
     this.el.hidden = true;
     this.tab = null;
     this.ed.root.classList.remove('side-open');
+    if (this.collapsed) this.setCollapsed(false);
     this.ed.root.querySelector('[data-act="panel"]').classList.remove('on');
     this.syncButtons();
   }
@@ -115,7 +139,7 @@ export class SidePanel {
   render() {
     this.lastTab = this.tab;
     this.body.textContent = '';
-    ({ outline: () => this.renderOutline(), audio: () => this.renderAudio(), ai: () => this.renderAI(), study: () => this.renderStudy(), find: () => this.renderFind(), history: () => this.renderHistory() })[this.tab]();
+    ({ outline: () => this.renderOutline(), audio: () => this.renderAudio(), ai: () => this.renderAI(), find: () => this.renderFind(), history: () => this.renderHistory() })[this.tab]();
   }
 
   refreshIf(tab) { if (this.isOpen && this.tab === tab) this.render(); }
@@ -123,12 +147,14 @@ export class SidePanel {
   notReady() {
     const why = aiUnavailableReason();
     if (!why) return null;
-    const b = h('button', { class: 'btn primary small', type: 'button' }, 'Open AI settings');
+    const b = h('button', { class: 'btn primary small', type: 'button' }, 'Set up AI');
     b.onclick = () => this.ed.app.settings('ai');
-    return h('div', { class: 'callout' }, h('p', {}, why), b);
+    return h('div', { class: 'callout connect-ai' }, h('strong', {}, 'Connect AI to create new study material'),
+      h('p', {}, 'Uses your own Claude key; Anthropic bills a few cents per summary or quiz. Only the pages you choose are sent. Anything already created below works without it.'), b);
   }
 
   selectedPages() {
+    if (this.sourceMode === 'library') return null;
     if (this.sourceMode === 'current') return [this.ed.curIdx];
     if (this.sourceMode === 'custom') return (this.sourcePages || []).filter((i) => i < this.ed.doc.pages.length);
     return null;
@@ -139,9 +165,11 @@ export class SidePanel {
     return pages ? 'Pages ' + pages.map((i) => i + 1).join(', ') : 'Whole note';
   }
 
-  sourcePicker() {
+  sourcePicker({ library = false } = {}) {
     const wrap = h('section', { class: 'learn-source' });
-    const select = h('select', { 'aria-label': 'Study content' }, ...[['all', 'Whole note'], ['current', 'Current page'], ['custom', 'Select pages…']].map(([value, label]) => h('option', { value }, label)));
+    const opts = [['all', 'This note · all pages'], ['current', 'This note · current page'], ['custom', 'This note · choose pages…'], ...(library ? [['library', 'All my notes']] : [])];
+    const select = h('select', { 'aria-label': 'Study content' }, ...opts.map(([value, label]) => h('option', { value }, label)));
+    if (!library && this.sourceMode === 'library') this.sourceMode = 'all';
     select.value = this.sourceMode || 'all';
     const pages = h('div', { class: 'source-pages' });
     const draw = () => {
@@ -159,17 +187,18 @@ export class SidePanel {
     };
     select.onchange = () => { this.sourceMode = select.value; this.apiHistory = []; this.chat = []; this.render(); };
     draw();
-    wrap.append(h('div', { class: 'row' }, h('span', {}, 'Study content'), select), pages);
+    wrap.append(h('div', { class: 'row' }, h('span', {}, 'From'), select), pages);
     return wrap;
   }
 
   renderOutline() {
     const B = this.body, ed = this.ed;
-    const heading = h('div', { class: 'learn-heading' }, h('span', { class: 'library-eyebrow' }, 'YOUR NOTE, AT A GLANCE'), h('h2', {}, 'Outline & pages'));
+    const heading = h('h2', { class: 'outline-head' }, 'Pages & outline');
     const search = h('input', { type: 'search', placeholder: 'Search pages and headings', 'aria-label': 'Search pages and headings', value: this.outlineQuery || '' });
     const modes = h('div', { class: 'outline-modes', role: 'group', 'aria-label': 'Page view' });
-    for (const [mode, label] of [['pages', 'All pages'], ['headings', 'Outline'], ['bookmarks', 'Bookmarks']]) {
-      const b = h('button', { class: 'filter-chip' + ((this.outlineMode || 'pages') === mode ? ' selected' : ''), type: 'button', 'aria-pressed': String((this.outlineMode || 'pages') === mode) }, label);
+    modes.classList.add('seg');
+    for (const [mode, label] of [['pages', 'Pages'], ['headings', 'Outline'], ['bookmarks', 'Bookmarks']]) {
+      const b = h('button', { class: (this.outlineMode || 'pages') === mode ? 'on' : '', type: 'button', 'aria-pressed': String((this.outlineMode || 'pages') === mode) }, label);
       b.onclick = () => { this.outlineMode = mode; this.render(); }; modes.append(b);
     }
     const list = h('div', { class: 'outline-list' });
@@ -179,10 +208,12 @@ export class SidePanel {
       ed.doc.pages.forEach((page, i) => {
         const typed = [...page.objs].filter((o) => o.type === 'text').sort((a, b) => a.y - b.y).map((o) => o.text).join('\n');
         const text = [typed, page.text || '', page.ocr?.text || ''].join('\n');
-        const title = page.outlineTitle || text.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 100) || `Page ${i + 1}`;
+        const extracted = text.split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').slice(0, 100);
+        const title = page.outlineTitle || extracted || `Page ${i + 1}`;
+        const kind = page.outlineTitle ? 'heading' : extracted ? 'extracted' : 'plain';   // your heading vs first line of the page
         if (this.outlineMode === 'bookmarks' && !page.bookmarked) return;
         if (q && !(`${title} ${text} ${i + 1}`.toLowerCase().includes(q))) return;
-        const row = h('article', { class: 'outline-page' + (ed.curIdx === i ? ' current' : ''), 'data-page-index': i });
+        const row = h('article', { class: 'outline-page ' + kind + (this.outlineMode === 'headings' ? ' compact' : '') + (ed.curIdx === i ? ' current' : ''), 'data-page-index': i });
         const jump = h('button', { class: 'outline-jump', type: 'button', 'aria-label': `Go to page ${i + 1}: ${title}` });
         if (this.outlineMode !== 'headings') {
           const preview = h('div', { class: 'outline-preview', style: { aspectRatio: `${page.w}/${page.h}` } });
@@ -192,7 +223,7 @@ export class SidePanel {
             canvas.width = canvas.height = 0;
           }).catch(() => { preview.textContent = `Page ${i + 1}`; });
         }
-        jump.append(h('span', { class: 'outline-page-title' }, title), h('span', { class: 'hint' }, `Page ${i + 1}`));
+        jump.append(h('span', { class: 'outline-line' }, h('span', { class: 'outline-page-title', title: kind === 'extracted' ? 'From the text on this page' : kind === 'heading' ? 'Your heading' : '' }, title), h('span', { class: 'outline-num' }, String(i + 1))));
         jump.onclick = () => { ed.scrollToPage(i); for (const r of list.children) r.classList.toggle('current', +r.dataset.pageIndex === i); };
         const bookmark = h('button', { class: 'icon-btn small' + (page.bookmarked ? ' on' : ''), type: 'button', title: page.bookmarked ? 'Remove bookmark' : 'Bookmark page', 'aria-label': `Bookmark page ${i + 1}`, 'aria-pressed': String(!!page.bookmarked), html: icon('star') });
         bookmark.onclick = () => { page.bookmarked = !page.bookmarked; ed.changed(); draw(); };
@@ -200,10 +231,10 @@ export class SidePanel {
         rename.onclick = async () => { const value = await promptText('Page heading', title); if (value) { page.outlineTitle = value; ed.changed(); draw(); } };
         row.append(jump, h('div', { class: 'row outline-actions' }, rename, bookmark)); list.append(row);
       });
-      if (!list.children.length) list.append(h('p', { class: 'hint' }, this.outlineMode === 'bookmarks' ? 'Bookmark a page with its star to keep it here.' : 'No matching pages.'));
+      if (!list.children.length) list.append(h('p', { class: 'hint' }, this.outlineMode === 'bookmarks' ? 'Bookmark a page with its star to keep it here.' : q ? 'No matching pages.' : 'Add headings with "Edit heading", or type a title at the top of a page.'));
     };
     search.oninput = () => { this.outlineQuery = search.value; draw(); };
-    B.append(heading, search, modes, h('p', { class: 'hint' }, 'Jump to a page, bookmark it, or add your own heading. Typed and extracted text provide heading previews.'), list);
+    B.append(heading, search, modes, list);
     draw();
   }
 
@@ -216,15 +247,29 @@ export class SidePanel {
   // ---------------------------------------------------------------- AI
   renderAI() {
     const B = this.body, doc = this.ed.doc;
+    doc.study ||= {};
     const nr = this.notReady();
-    B.append(h('div', { class: 'learn-heading' }, h('span', { class: 'library-eyebrow' }, 'OPENPAGE LEARN'), h('h2', {}, 'Make it click.'), h('p', { class: 'hint' }, 'Understand your notes. Practice what matters.')));
-    if (nr) B.append(nr);
-    B.append(this.sourcePicker());
+    this.learnView ||= doc.summary ? 'summary' : 'practice';
+    const seg = h('div', { class: 'seg learn-seg', role: 'tablist', 'aria-label': 'Learn views' });
+    for (const [id, label] of [['summary', 'Summary'], ['chat', 'Chat'], ['practice', 'Practice']]) {
+      const b = h('button', { type: 'button', role: 'tab', class: this.learnView === id ? 'on' : '', 'aria-selected': String(this.learnView === id) }, label);
+      b.onclick = () => { this.learnView = id; this.practiceMode = null; this.render(); };
+      seg.append(b);
+    }
+    B.append(h('div', { class: 'learn-head' }, h('h2', {}, 'Learn'), seg));
+    if (!(this.learnView === 'practice' && this.practiceMode === 'cards' && (doc.study.cards || []).length)) B.append(this.sourcePicker({ library: this.learnView === 'chat' }));
+    if (this.learnView === 'summary') this.renderSummary(B, nr);
+    else if (this.learnView === 'chat') this.renderChat(B, nr);
+    else this.renderPractice(B, nr);
+    if (nr) B.append(nr);   // existing material first; the setup card follows
+  }
 
+  renderSummary(B, nr) {
+    const doc = this.ed.doc;
     // Summary
     const sumOut = h('div', { class: 'ai-out' });
     if (doc.summary) sumOut.innerHTML = md(doc.summary);
-    const sumBtn = h('button', { class: 'btn primary', type: 'button', disabled: !!nr }, doc.summary ? 'Summarize again' : 'Summarize this note');
+    const sumBtn = h('button', { class: 'btn primary', type: 'button', disabled: !!nr }, doc.summary ? 'Summarize again' : 'Create summary');
     const sumActs = h('div', { class: 'row' });
     const showSumActs = () => {
       sumActs.textContent = '';
@@ -265,10 +310,11 @@ export class SidePanel {
     }
     B.append(snSec);
 
+  }
+
+  renderChat(B, nr) {
     // Chat
-    const scope = h('select', { 'aria-label': 'Chat scope' }, h('option', { value: 'note' }, 'This note'), h('option', { value: 'all' }, 'All my notes'));
-    scope.value = this.chatScope || 'note';
-    scope.onchange = () => { this.chatScope = scope.value; this.chat = []; this.apiHistory = []; this.render(); };
+    const scope = { value: this.sourceMode === 'library' ? 'all' : 'note' };   // one source selector above
     const log = h('div', { class: 'chat-log' });
     const draw = () => {
       log.textContent = '';
@@ -306,62 +352,45 @@ export class SidePanel {
     input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } };
     const clear = h('button', { class: 'btn ghost small', type: 'button' }, 'New chat');
     clear.onclick = () => { this.chat = []; this.apiHistory = []; draw(); };
-    const chatSection = h('section', { class: 'side-sec learn-chat' }, h('div', { class: 'row' }, h('h3', {}, 'Chat with your notes'), h('span', { style: { flex: 1 } }), scope), log,
-      h('div', { class: 'chat-input' }, input, send), clear);
-    const source = B.querySelector('.learn-source');
-    source.after(chatSection);
-    const practice = h('section', { class: 'side-sec learn-practice' }, h('h3', {}, 'Put your knowledge to work'));
-    for (const [id, title, description] of [['quiz', 'Practice quiz', 'Check your understanding'], ['cards', 'Flashcards', 'Recall the key ideas'], ['blanks', 'Fill in the blanks', 'Complete the missing concepts']]) {
-      const b = h('button', { class: 'learn-action', type: 'button' }, h('strong', {}, title), h('span', { class: 'hint' }, description), h('span', { class: 'learn-arrow' }, '↗'));
-      b.onclick = () => { this.open('study'); this.body.querySelector(`[data-study="${id}"]`)?.scrollIntoView({ block: 'start' }); };
-      practice.append(b);
+    const chatSection = h('section', { class: 'side-sec learn-chat' }, log, h('div', { class: 'chat-input' }, input, send), clear);
+    B.append(chatSection);
+  }
+
+  // Practice: flashcards (Study Stack), quiz, fill in the blanks
+  renderPractice(B, nr) {
+    const doc = this.ed.doc, st = doc.study;
+    const mode = this.practiceMode;
+    if (!mode) {
+      const cards = st.cards || [], mastered = cards.filter((c) => (c.got || 0) >= 3).length;
+      const items = [
+        ['cards', 'Flashcards', cards.length ? `${cards.length} cards · ${mastered} mastered` : 'Recall the key ideas'],
+        ['quiz', 'Quiz', (st.quiz || []).length ? `${st.quiz.length} questions${st.progress ? ` · ${st.progress.correct} of ${st.progress.answered} right so far` : ''}` : 'Check your understanding'],
+        ['blanks', 'Fill in the blanks', (st.blanks || []).length ? `${st.blanks.length} prompts` : 'Complete the missing ideas'],
+      ];
+      const list = h('section', { class: 'side-sec learn-practice' });
+      for (const [id, title, sub] of items) {
+        const b = h('button', { class: 'learn-action', type: 'button' }, h('strong', {}, title), h('span', { class: 'hint' }, sub), h('span', { class: 'learn-arrow', 'aria-hidden': 'true' }, '›'));
+        b.onclick = () => { this.practiceMode = id; this.render(); };
+        list.append(b);
+      }
+      B.append(list);
+      return;
     }
-    const progress = doc.study?.progress;
-    if (progress) practice.append(h('p', { class: 'hint' }, `${progress.answered} answered · ${progress.correct} correct`));
-    chatSection.after(practice);
+    const back = h('button', { type: 'button', class: 'btn ghost small practice-back' }, '‹ Practice');
+    back.onclick = () => { this.practiceMode = null; this.render(); };
+    B.append(back);
+    if (mode === 'cards') this.renderCards(B, nr);
+    else if (mode === 'quiz') this.renderQuiz(B, nr);
+    else this.renderBlanks(B, nr);
   }
 
-  async allNotesContent() {
-    const notes = this.ed.app.notes.filter((n) => !n.deleted);
-    let text = '';
-    for (const n of notes) {
-      const block = `=== Note: "${n.title}" (edited ${new Date(n.updated).toLocaleDateString()}) ===\n${(n.searchText || '').slice(0, 20000)}\n\n`;
-      if (text.length + block.length > 600000) break;
-      text += block;
-    }
-    return [{ type: 'text', text: 'Here are all of my notes (typed text, machine-read handwriting, PDF text and transcripts):\n\n' + text }];
-  }
-
-  async noteOrToast() {
-    if (this.selectedPages()?.length === 0) { toast('Select at least one page to study.'); return null; }
-    const content = await noteContent(this.ed, { pageIndices: this.selectedPages() });
-    const hasStuff = content.length > 1 || content[0].text.split('\n').length > 1;
-    if (!hasStuff) { toast('This note is empty. Write something first.'); return null; }
-    return content;
-  }
-
-  err(e, el) {
-    const msg = e instanceof AIError ? e.message : 'Something went wrong: ' + (e.message || e);
-    el.textContent = '';
-    el.append(h('p', { class: 'error' }, msg));
-  }
-
-  // ---------------------------------------------------------------- study
-  renderStudy() {
-    const B = this.body, doc = this.ed.doc;
-    doc.study ||= {};
-    const nr = this.notReady();
-    if (nr) B.append(nr);
-
-    B.append(h('div', { class: 'learn-heading' }, h('span', { class: 'library-eyebrow' }, 'ACTIVE RECALL'), h('h2', {}, 'Your study space')), this.sourcePicker());
-
-    // Flashcards
-    const fc = h('section', { class: 'side-sec', 'data-study': 'cards' }, h('h3', {}, 'Flashcards'));
-    const cards = doc.study.cards || [];
-    const gen = h('button', { class: 'btn primary', type: 'button', disabled: !!nr }, cards.length ? 'Make new flashcards' : 'Make flashcards from this note');
+  renderCards(B, nr) {
+    const doc = this.ed.doc, cards = doc.study.cards || [];
     const n = h('select', { 'aria-label': 'Number of cards' }, ...[10, 20, 30].map((v) => h('option', { value: v }, v + ' cards')));
     const out = h('div', {});
+    const gen = h('button', { class: cards.length ? 'btn small' : 'btn primary', type: 'button', disabled: !!nr }, cards.length ? 'Create new flashcards' : 'Create flashcards');
     gen.onclick = async () => {
+      if (cards.length && !(await confirmDlg('Replace these flashcards with a new set? Your progress on them will be lost.', { title: 'New flashcards?', okLabel: 'Replace' }))) return;
       gen.disabled = true; gen.textContent = 'Writing flashcards…';
       try {
         const content = await this.noteOrToast();
@@ -372,41 +401,27 @@ export class SidePanel {
           schema: { type: 'object', additionalProperties: false, required: ['cards'], properties: { cards: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['front', 'back'], properties: { front: { type: 'string' }, back: { type: 'string' } } } } } },
         });
         doc.study.cards = res.cards.map((c) => ({ ...c, id: uid() }));
-        doc.study.cardPos = 0;
         doc.study.cardsSource = this.sourceLabel();
         this.ed.changed();
         this.render();
       } catch (e) { this.err(e, out); } finally { gen.disabled = !!nr; }
     };
-    fc.append(h('div', { class: 'row' }, gen, n), out);
+    const sec = h('section', { class: 'side-sec', 'data-study': 'cards' });
     if (cards.length) {
-      if (doc.study.cardsSource) fc.append(h('p', { class: 'hint' }, 'Created from: ' + doc.study.cardsSource));
-      let pos = Math.min(doc.study.cardPos || 0, cards.length - 1), flipped = false;
-      const card = h('button', { class: 'flashcard', type: 'button', 'aria-live': 'polite' });
-      const counter = h('span', { class: 'hint' });
-      const show = () => {
-        const c = cards[pos];
-        card.textContent = flipped ? c.back : c.front;
-        card.classList.toggle('back', flipped);
-        counter.textContent = `${pos + 1} / ${cards.length}${flipped ? ' · answer' : ' · tap to flip'}`;
-        doc.study.cardPos = pos;
-      };
-      card.onclick = () => { flipped = !flipped; show(); };
-      const prev = h('button', { class: 'btn small', type: 'button' }, '‹ Prev');
-      const next = h('button', { class: 'btn small', type: 'button' }, 'Next ›');
-      const again = h('button', { class: 'btn small', type: 'button' }, 'Study again later');
-      prev.onclick = () => { pos = (pos - 1 + cards.length) % cards.length; flipped = false; show(); };
-      next.onclick = () => { pos = (pos + 1) % cards.length; flipped = false; show(); };
-      again.onclick = () => { cards.push(cards.splice(pos, 1)[0]); if (pos >= cards.length) pos = 0; flipped = false; show(); this.ed.changed(); toast('Moved to the end of the deck'); };
-      show();
-      fc.append(card, h('div', { class: 'row' }, prev, again, next, h('span', { style: { flex: 1 } }), counter));
+      sec.append(studyStack(cards, { onChange: () => this.ed.changed(), onPage: (i) => this.ed.scrollToPage(i) }));
+      sec.append(h('div', { class: 'row practice-foot' }, h('span', { class: 'hint' }, doc.study.cardsSource ? 'From: ' + doc.study.cardsSource : ''), h('span', { style: { flex: 1 } }), gen, n), out);
+    } else {
+      sec.append(h('p', { class: 'hint' }, 'Flashcards are made from the pages selected above.'), h('div', { class: 'row' }, gen, n), out);
     }
-    B.append(fc);
+    B.append(sec);
+  }
 
+  renderQuiz(B, nr) {
+    const doc = this.ed.doc;
     // Quiz
-    const qz = h('section', { class: 'side-sec', 'data-study': 'quiz' }, h('h3', {}, 'Practice quiz'));
+    const qz = h('section', { class: 'side-sec', 'data-study': 'quiz' }, h('h3', {}, 'Quiz'));
     const qs = (doc.study.quiz || []);
-    const qgen = h('button', { class: 'btn primary', type: 'button', disabled: !!nr }, qs.length ? 'Make a new quiz' : 'Make a quiz from this note');
+    const qgen = h('button', { class: 'btn primary', type: 'button', disabled: !!nr }, qs.length ? 'Create new quiz' : 'Create quiz');
     const qn = h('select', { 'aria-label': 'Number of questions' }, ...[5, 10, 20].map((v) => h('option', { value: v }, v + ' questions')));
     const qout = h('div', {});
     qgen.onclick = async () => {
@@ -432,7 +447,31 @@ export class SidePanel {
       qz.append(this.quizView(qs));
     }
     B.append(qz);
-    this.renderBlanks(B, nr);
+  }
+
+  async allNotesContent() {
+    const notes = this.ed.app.notes.filter((n) => !n.deleted);
+    let text = '';
+    for (const n of notes) {
+      const block = `=== Note: "${n.title}" (edited ${new Date(n.updated).toLocaleDateString()}) ===\n${(n.searchText || '').slice(0, 20000)}\n\n`;
+      if (text.length + block.length > 600000) break;
+      text += block;
+    }
+    return [{ type: 'text', text: 'Here are all of my notes (typed text, machine-read handwriting, PDF text and transcripts):\n\n' + text }];
+  }
+
+  async noteOrToast() {
+    if (this.selectedPages()?.length === 0) { toast('Select at least one page to study.'); return null; }
+    const content = await noteContent(this.ed, { pageIndices: this.selectedPages() });
+    const hasStuff = content.length > 1 || content[0].text.split('\n').length > 1;
+    if (!hasStuff) { toast('This note is empty. Write something first.'); return null; }
+    return content;
+  }
+
+  err(e, el) {
+    const msg = e instanceof AIError ? e.message : 'Something went wrong: ' + (e.message || e);
+    el.textContent = '';
+    el.append(h('p', { class: 'error' }, msg));
   }
 
   renderBlanks(B, nr) {
