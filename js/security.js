@@ -4,7 +4,7 @@
 // Nothing here talks to a server. In the iPad app, unlocking uses the iPad's own Touch ID / Face ID /
 // passcode (LocalAuthentication, via the native bridge); notes are also file-protected by iPadOS.
 // In a browser, unlocking uses an Openpage passcode, stored only as a salted PBKDF2 hash.
-import { h, prefs, toast, isNative, nativeCall } from './util.js';
+import { h, prefs, toast, isNative, nativeCall, DEMO } from './util.js';
 import { mascot, setMood } from './mascot.js';
 import { confirmDlg } from './ui.js';
 import { eraseAllStorage } from './db.js';
@@ -197,7 +197,7 @@ window.openpageCaptured = (on) => document.body.classList.toggle('captured', !!o
 // Called once at startup, before notes are shown.
 export async function initSecurity() {
   if (isNative()) native = await ask('status');
-  if (!isNative()) {
+  if (!isNative() && !DEMO) {   // demo: nothing private, and screenshot tools load pages in the background
     document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? wentAway() : cameBack()));
   }
   document.body.classList.toggle('protected', isProtected());
@@ -234,6 +234,7 @@ export function securitySettings() {
   };
   const erase = h('button', { type: 'button', class: 'btn danger' }, 'Erase all Openpage data on this device…');
   erase.onclick = async () => {
+    if (DEMO) { toast('Demo: starting over with fresh sample notes'); setTimeout(() => location.reload(), 600); return; }   // never touch real notes from the demo
     const sure = await confirmDlg('Every note, recording, shared-subject link and setting in Openpage on this device will be erased. Shared folders in iCloud Drive aren\'t touched. This can\'t be undone.',
       { title: 'Erase all Openpage data?', okLabel: 'Erase everything' });
     if (!sure) return;

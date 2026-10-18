@@ -62,11 +62,16 @@ export function loadScript(src) {
   return scripts.get(src);
 }
 
+// Demo mode (?demo in the address): sample notes in separate storage, reset on every visit,
+// so reviewers see real screens and nobody's own notes are ever touched.
+export const DEMO = new URLSearchParams(location.search).has('demo');
+const PREFIX = DEMO ? 'fn-demo:' : 'fn:';
+
 export const prefs = {
   get(k, d) {
-    try { const v = localStorage.getItem('fn:' + k); return v == null ? d : JSON.parse(v); } catch { return d; }
+    try { const v = localStorage.getItem(PREFIX + k); return v == null ? d : JSON.parse(v); } catch { return d; }
   },
-  set(k, v) { try { localStorage.setItem('fn:' + k, JSON.stringify(v)); } catch {} },
+  set(k, v) { try { localStorage.setItem(PREFIX + k, JSON.stringify(v)); } catch {} },
 };
 
 let toastTimer;

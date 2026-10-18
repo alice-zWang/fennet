@@ -5,5 +5,24 @@ Notes are stored only in your own browser on your own device; there are no accou
 
 **Open the app:** https://alice-zwang.github.io/openpage/
 
+## Demo (sample notes, nothing saved)
+
+The demo uses separate storage and resets on every visit, so it never touches anyone's real notes.
+
+| Screen | Link |
+|---|---|
+| Library, dark | https://alice-zwang.github.io/openpage/?demo |
+| Library, light | https://alice-zwang.github.io/openpage/?demo&theme=light |
+| Note with handwriting, diagram and highlights | https://alice-zwang.github.io/openpage/?demo&note=1 |
+| Same note, light mode | https://alice-zwang.github.io/openpage/?demo&note=1&theme=light |
+| Note with the Learn panel open | https://alice-zwang.github.io/openpage/?demo&note=1&panel=learn |
+| Note with the Outline panel open | https://alice-zwang.github.io/openpage/?demo&note=2&panel=outline |
+| Lecture note (lined paper) | https://alice-zwang.github.io/openpage/?demo&note=4&theme=light |
+| Settings | https://alice-zwang.github.io/openpage/?demo&settings=1 |
+| Mint accent color instead of lime | https://alice-zwang.github.io/openpage/?demo&accent=4ee6c8 |
+| Mascot designs | https://alice-zwang.github.io/openpage/design/mascots.html |
+
+Options combine with `&`: `theme=light|dark|system`, `accent=<hex>`, `note=1..5`, `panel=learn|outline|study|find|history`, `settings=1`.
+
 Privacy policy: [docs/privacy-policy.md](docs/privacy-policy.md). Bundled open-source parts are in `vendor/`
 (PDF.js, jsPDF, Tesseract.js, Mammoth, JSZip) and `fonts/` (SIL Open Font License), with their licenses.

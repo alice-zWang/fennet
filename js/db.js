@@ -5,9 +5,9 @@
 //   blobs:    binary files (PDFs, images, audio)
 //   versions: snapshots of notes for version history
 //   meta:     app-level records (e.g. the sync folder handle)
-import { uid } from './util.js';
+import { DEMO, uid } from './util.js';
 
-const NAME = 'openpage';
+const NAME = DEMO ? 'openpage-demo' : 'openpage';
 const OLD_NAME = 'free-notability';
 const VERSION = 2;
 const STORES = ['notes', 'content', 'subjects', 'dividers', 'blobs', 'versions', 'meta'];
@@ -27,7 +27,7 @@ function open() {
     dbp = openDB(NAME, VERSION, (db, tx) => {
       for (const s of STORES) if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' });
       if (!tx.objectStore('versions').indexNames.contains('noteId')) tx.objectStore('versions').createIndex('noteId', 'noteId');
-    }).then(async (db) => { await migrateOld(db); return db; });
+    }).then(async (db) => { if (!DEMO) await migrateOld(db); return db; });
   }
   return dbp;
 }

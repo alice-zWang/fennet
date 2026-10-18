@@ -12,6 +12,7 @@ import { fileToPages, imagesToPages, isDoc, DOC_ACCEPT } from './importers.js';
 import { CLAUDE_MODELS, deviceModelAPI } from './ai.js';
 import { applyTheme, ACCENT_PRESETS, DEFAULT_ACCENT } from './theme.js';
 import { initSecurity, securitySettings } from './security.js';
+import { setupDemo, openDemoView } from './demo.js';
 import { mascot, setMood, applyMascotSetting } from './mascot.js';
 import { initCollab, collabSettings, shareSubject, joinSubject, stopSharing, spaces, noteSaved } from './collab.js';
 import { pickColor } from './colorpicker.js';
@@ -42,6 +43,7 @@ class App {
   }
 
   async init() {
+    await setupDemo(this);
     this.applyTheme();
     document.title = APP_NAME;
     for (const el of document.querySelectorAll('.app-name')) el.textContent = APP_NAME;
@@ -68,12 +70,13 @@ class App {
       if (!ed || $('#workspace').hidden) return;
       if (ed.tool === 'eraser') ed.setTool(ed.prevTool || 'pen'); else { ed.prevTool = ed.tool; ed.setTool('eraser'); }
     };
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol !== 'file:' && !document.documentElement.classList.contains('demo')) navigator.serviceWorker.register('sw.js').catch(() => {});
     persist();
     this.syncSoon = debounce(() => this.runSync(false), 4000);
     this.initSync();
     initCollab(this);
-    this.route();
+    await this.route();
+    openDemoView(this);
   }
 
   async load() {
