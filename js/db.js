@@ -59,7 +59,7 @@ async function store(name, mode = 'readonly') {
   return (await open()).transaction(name, mode).objectStore(name);
 }
 
-// Erase everything Openpage stores in this browser (Settings → Erase all data).
+// Erase everything Fennet stores in this browser (Settings → Erase all data).
 export async function eraseAllStorage() {
   try { if (dbp) (await dbp).close(); } catch {}
   dbp = null;

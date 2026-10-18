@@ -1,5 +1,5 @@
 // Library (subjects, dividers, search) + workspace routing.
-import { $, h, uid, prefs, toast, fmtDate, fmtTime, pickFiles, shareOrDownload, safeName, APP_NAME, debounce } from './util.js';
+import { $, h, uid, prefs, toast, fmtDate, fmtTime, pickFiles, shareOrDownload, safeName, APP_NAME, debounce, DEMO } from './util.js';
 import { icon, hydrateIcons } from './icons.js';
 import { db, putBlob, persist } from './db.js';
 import { blankPage, pdfToPages, PAGE_SIZES, PAPER_TYPES, PAPER_COLORS } from './render.js';
@@ -11,7 +11,9 @@ import { scanDocuments } from './scanner.js';
 import { fileToPages, imagesToPages, isDoc, DOC_ACCEPT } from './importers.js';
 import { CLAUDE_MODELS, deviceModelAPI } from './ai.js';
 import { applyTheme, ACCENT_PRESETS, DEFAULT_ACCENT } from './theme.js';
-import { initSecurity, securitySettings } from './security.js';
+import { initSecurity, securitySettings, whenUnlocked } from './security.js';
+import { paintCover, coverPicker } from './covers.js';
+import { showIntro } from './intro.js';
 import { setupDemo, openDemoView } from './demo.js';
 import { mascot, setMood, applyMascotSetting } from './mascot.js';
 import { initCollab, collabSettings, shareSubject, joinSubject, stopSharing, spaces, noteSaved } from './collab.js';
@@ -61,10 +63,15 @@ class App {
     applyMascotSetting();
     document.body.classList.toggle('reduce-card-motion', prefs.get('reduceCardMotion', false));
     $('#lib-mascot').append(mascot('lib'));
+    paintCover();
+    const splashGone = hideSplash();
     await initSecurity();
     await this.load();
     await this.purgeTrash();
     this.bindLibrary();
+    // the welcome tour: once, after the splash and any lock screen (demo links show it only with &intro)
+    const wantIntro = DEMO ? new URLSearchParams(location.search).has('intro') : !prefs.get('introSeen', false);
+    if (wantIntro) splashGone.then(whenUnlocked).then(() => showIntro(this));
     addEventListener('hashchange', () => this.route());
     addEventListener('keydown', (e) => this.active && !$('#workspace').hidden && this.active.onKey(e));
     addEventListener('paste', (e) => this.active && !$('#workspace').hidden && this.active.onPaste(e));
@@ -316,6 +323,7 @@ class App {
 
   // ---------------------------------------------------------------- library UI
   bindLibrary() {
+    $('#btn-cover').onclick = () => coverPicker();
     $('#btn-new').onclick = (e) => this.newMenu(e.currentTarget);
     $('#btn-settings').onclick = () => this.settings();
     $('#btn-new-subject').onclick = () => this.newSubject(null);
@@ -898,6 +906,7 @@ class App {
         const appearance = sec('appearance', 'Appearance',
           h('div', { class: 'row' }, h('small', {}, 'Theme'), seg('theme', 'system', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], () => this.applyTheme())),
           h('small', {}, 'Accent color'), this.accentPicker(),
+          h('small', {}, 'Library cover'), (() => { const b = h('button', { type: 'button', class: 'btn small', html: icon('image') }, 'Choose a cover…'); b.onclick = () => coverPicker(); return h('div', {}, b); })(),
           check('mascot', true, 'Show the mascot (its face follows what you do)', applyMascotSetting),
           check('reduceCardMotion', false, 'Reduce card motion (flashcards change without flipping)', (v) => document.body.classList.toggle('reduce-card-motion', v)));
         const general = sec('writing', 'Writing & Pencil',
@@ -979,7 +988,9 @@ class App {
         }
         install.append(h('small', {}, 'iPad / iPhone: open in Safari, tap Share → Add to Home Screen. Android / Chrome / Edge: use the install icon in the address bar. Mac Safari: File → Add to Dock. Once installed it works offline.'));
 
-        const about = sec('about', 'About', h('small', { class: 'legal' },
+        const tour = h('button', { type: 'button', class: 'btn small' }, 'Replay the welcome tour');
+        tour.onclick = () => { tour.closest('dialog')?.close(); showIntro(this); };
+        const about = sec('about', 'About', h('div', { class: 'about-logo', role: 'img', 'aria-label': `${APP_NAME} logo` }), h('div', {}, tour), h('small', { class: 'legal' },
           `${APP_NAME} is free, independent software. It is not affiliated with, endorsed by, or sponsored by Ginger Labs or the Notability app. ` +
           'Open-source components: PDF.js (Apache-2.0), jsPDF (MIT), Tesseract.js (Apache-2.0), Mammoth (BSD-2), JSZip (MIT), Anthropic TypeScript SDK (MIT).'));
 
@@ -1016,5 +1027,13 @@ class App {
 }
 
 const app = new App();
+// The splash (index.html) stays a moment once the app is ready, so it isn't lost under the system's
+// opening animation, then fades to the library or lock screen. The app keeps loading underneath.
+const SPLASH_MS = 1200;
+function hideSplash() {
+  const el = $('#splash');
+  if (!el) return Promise.resolve();
+  return new Promise((done) => setTimeout(() => { el.classList.add('gone'); setTimeout(() => { el.remove(); done(); }, 500); }, DEMO ? 0 : SPLASH_MS));
+}
 window.addEventListener('DOMContentLoaded', () => app.init());
 export default app;

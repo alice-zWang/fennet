@@ -1,4 +1,4 @@
-# Openpage
+# Fennet
 
 A free note-taking web app for handwriting, PDF annotation, audio recordings and study tools.
 Notes are stored only in your own browser on your own device; there are no accounts, servers or trackers.
@@ -20,9 +20,13 @@ The demo uses separate storage and resets on every visit, so it never touches an
 | Lecture note (lined paper) | https://alice-zwang.github.io/openpage/?demo&note=4&theme=light |
 | Settings | https://alice-zwang.github.io/openpage/?demo&settings=1 |
 | Mint accent color instead of lime | https://alice-zwang.github.io/openpage/?demo&accent=4ee6c8 |
+| Welcome tour | https://alice-zwang.github.io/openpage/?demo&intro |
+| Water-bubble style sampler | https://alice-zwang.github.io/openpage/design/bubble.html |
 | Mascot designs | https://alice-zwang.github.io/openpage/design/mascots.html |
 
-Options combine with `&`: `theme=light|dark|system`, `accent=<hex>`, `note=1..5`, `panel=learn|outline|study|find|history`, `settings=1`.
+Options combine with `&`: `theme=light|dark|system`, `accent=<hex>`, `note=1..5`, `panel=learn|outline|study|find|history`, `settings=1`, `intro`.
+
+The library cover (tap the picture button on the big card) can be fractal art, a color, a gradient, or your own image or PDF page.
 
 Privacy policy: [docs/privacy-policy.md](docs/privacy-policy.md). Bundled open-source parts are in `vendor/`
 (PDF.js, jsPDF, Tesseract.js, Mammoth, JSZip) and `fonts/` (SIL Open Font License), with their licenses.

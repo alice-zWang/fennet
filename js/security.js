@@ -3,7 +3,7 @@
 //
 // Nothing here talks to a server. In the iPad app, unlocking uses the iPad's own Touch ID / Face ID /
 // passcode (LocalAuthentication, via the native bridge); notes are also file-protected by iPadOS.
-// In a browser, unlocking uses an Openpage passcode, stored only as a salted PBKDF2 hash.
+// In a browser, unlocking uses an Fennet passcode, stored only as a salted PBKDF2 hash.
 import { h, prefs, toast, isNative, nativeCall, DEMO } from './util.js';
 import { mascot, setMood } from './mascot.js';
 import { confirmDlg } from './ui.js';
@@ -78,8 +78,8 @@ function onboarding() {
     const name = h('input', { type: 'text', maxlength: 40, autocomplete: 'name', placeholder: 'Your name', 'aria-label': 'Your name' });
     const next = h('button', { class: 'btn primary', type: 'button' }, 'Continue');
     const el = screen('onboard',
-      h('h1', {}, 'Welcome to Openpage'),
-      h('p', {}, 'Create your profile. It stays on this device: Openpage has no servers and never sees your notes. Your name is shown to people you collaborate with.'),
+      h('h1', {}, 'Welcome to Fennet'),
+      h('p', {}, 'Create your profile. It stays on this device: Fennet has no servers and never sees your notes. Your name is shown to people you collaborate with.'),
       name, next);
     name.focus();
     name.onkeydown = (e) => { if (e.key === 'Enter') next.click(); };
@@ -94,7 +94,7 @@ function onboarding() {
   });
 }
 
-// Choose how Openpage is unlocked: Touch ID / Face ID, an Openpage passcode, or not now.
+// Choose how Fennet is unlocked: Touch ID / Face ID, an Fennet passcode, or not now.
 // Resolves with 'device', 'pin' or 'none' (null if cancelled from Settings).
 function setupLock({ fromSettings = false, start = 'choose' } = {}) {
   return new Promise((resolve) => {
@@ -102,17 +102,17 @@ function setupLock({ fromSettings = false, start = 'choose' } = {}) {
     const finish = (method) => { el && el.remove(); if (method) prefs.set('lockMethod', method); resolve(method); };
     const choose = () => {
       el && el.remove();
-      const kids = [h('h1', {}, 'Lock Openpage?'),
+      const kids = [h('h1', {}, 'Lock Fennet?'),
         h('p', {}, 'A lock keeps your notes private if someone else picks up your iPad. You can change this any time in Settings → Privacy & security.')];
       if (usesDeviceAuth()) {
         const bio = h('button', { class: 'btn primary', type: 'button' }, `Yes, use ${biometryName()}`);
         bio.onclick = async () => {
-          const r = await ask('auth', { reason: 'Turn on the Openpage lock' });
+          const r = await ask('auth', { reason: 'Turn on the Fennet lock' });
           if (r && r.ok) finish('device'); else toast(`${biometryName()} didn't confirm. Try again or choose another option.`);
         };
         kids.push(bio);
       }
-      const pin = h('button', { class: usesDeviceAuth() ? 'btn' : 'btn primary', type: 'button' }, usesDeviceAuth() ? 'Use an Openpage passcode instead' : 'Yes, set a passcode');
+      const pin = h('button', { class: usesDeviceAuth() ? 'btn' : 'btn primary', type: 'button' }, usesDeviceAuth() ? 'Use an Fennet passcode instead' : 'Yes, set a passcode');
       pin.onclick = makePin;
       const no = h('button', { class: 'btn ghost', type: 'button' }, fromSettings ? 'Cancel' : 'Not now');
       no.onclick = () => finish(fromSettings ? null : 'none');
@@ -125,7 +125,7 @@ function setupLock({ fromSettings = false, start = 'choose' } = {}) {
       const go = h('button', { class: 'btn primary', type: 'button' }, 'Set passcode');
       const back = h('button', { class: 'btn', type: 'button' }, 'Back');
       el = screen('onboard', h('h1', {}, 'Create a passcode'),
-        h('p', {}, 'At least 6 digits. You\'ll enter it each time you open Openpage. It can\'t be recovered, so choose one you\'ll remember.'), a, b, msg,
+        h('p', {}, 'At least 6 digits. You\'ll enter it each time you open Fennet. It can\'t be recovered, so choose one you\'ll remember.'), a, b, msg,
         h('div', { class: 'secure-actions' }, back, go));
       a.focus();
       back.onclick = fromSettings ? () => finish(null) : choose;
@@ -143,6 +143,10 @@ function setupLock({ fromSettings = false, start = 'choose' } = {}) {
 
 const lockMethod = () => prefs.get('lockMethod', 'none');
 
+// resolves once Fennet isn't locked (right away if it isn't)
+let unlockWaiters = [];
+export const whenUnlocked = () => (locked ? new Promise((r) => unlockWaiters.push(r)) : Promise.resolve());
+
 export function lock() {
   if (locked || !profile() || lockMethod() === 'none') return;
   locked = true;
@@ -152,10 +156,13 @@ export function lock() {
   const msg = h('p', { class: 'secure-msg', 'aria-live': 'polite' });
   const kids = [h('h1', {}, `Welcome back, ${p.name}`)];
   let el;
-  const unlocked = () => { locked = false; document.body.classList.remove('is-locked'); el.remove(); prefs.set('failedUnlocks', 0); setMood('happy'); setMood('wink', 2200); };
+  const unlocked = () => {
+    locked = false; document.body.classList.remove('is-locked'); el.remove(); prefs.set('failedUnlocks', 0); setMood('happy'); setMood('wink', 2200);
+    const w = unlockWaiters; unlockWaiters = []; w.forEach((r) => r());
+  };
   if (prefs.get('lockMethod') === 'device' && usesDeviceAuth()) {
     const go = h('button', { class: 'btn primary', type: 'button' }, `Unlock with ${biometryName()}`);
-    go.onclick = async () => { const r = await ask('auth', { reason: 'Unlock Openpage' }); if (r && r.ok) unlocked(); else msg.textContent = 'Not unlocked. Try again.'; };
+    go.onclick = async () => { const r = await ask('auth', { reason: 'Unlock Fennet' }); if (r && r.ok) unlocked(); else msg.textContent = 'Not unlocked. Try again.'; };
     kids.push(go, msg);
     el = screen('lock', ...kids);
     setTimeout(() => go.click(), 250);
@@ -168,7 +175,7 @@ export function lock() {
       const n = prefs.get('failedUnlocks', 0) + 1;
       prefs.set('failedUnlocks', n);
       if (n >= 5) prefs.set('lockoutUntil', Date.now() + Math.min(3600, 30 * 2 ** (n - 5)) * 1000);   // 30 s, 60 s, 2 min… up to 1 h
-      msg.textContent = n >= 5 ? 'Wrong passcode. Openpage is paused for a moment.' : 'Wrong passcode.';
+      msg.textContent = n >= 5 ? 'Wrong passcode. Fennet is paused for a moment.' : 'Wrong passcode.';
       input.value = ''; input.focus();
     };
     input.onkeydown = (e) => { if (e.key === 'Enter') go.click(); };
@@ -232,13 +239,13 @@ export function securitySettings() {
     document.body.classList.toggle('protected', prot.checked);
     toast(prot.checked ? 'Protected mode on' : 'Protected mode off');
   };
-  const erase = h('button', { type: 'button', class: 'btn danger' }, 'Erase all Openpage data on this device…');
+  const erase = h('button', { type: 'button', class: 'btn danger' }, 'Erase all Fennet data on this device…');
   erase.onclick = async () => {
     if (DEMO) { toast('Demo: starting over with fresh sample notes'); setTimeout(() => location.reload(), 600); return; }   // never touch real notes from the demo
-    const sure = await confirmDlg('Every note, recording, shared-subject link and setting in Openpage on this device will be erased. Shared folders in iCloud Drive aren\'t touched. This can\'t be undone.',
-      { title: 'Erase all Openpage data?', okLabel: 'Erase everything' });
+    const sure = await confirmDlg('Every note, recording, shared-subject link and setting in Fennet on this device will be erased. Shared folders in iCloud Drive aren\'t touched. This can\'t be undone.',
+      { title: 'Erase all Fennet data?', okLabel: 'Erase everything' });
     if (!sure) return;
-    if (!(await verifyUser('Erase all Openpage data'))) return;
+    if (!(await verifyUser('Erase all Fennet data'))) return;
     toast('Erasing…');
     // the iPad app wipes its whole web storage natively (most thorough), then reloads
     if (isNative() && (await ask('erase'))) return;
@@ -248,16 +255,16 @@ export function securitySettings() {
   const how = h('select', { 'aria-label': 'Lock with' });
   const drawHow = () => {
     how.textContent = '';
-    const opts = [...(usesDeviceAuth() ? [['device', biometryName()]] : []), ['pin', 'Openpage passcode'], ['none', 'Off (no lock)']];
+    const opts = [...(usesDeviceAuth() ? [['device', biometryName()]] : []), ['pin', 'Fennet passcode'], ['none', 'Off (no lock)']];
     for (const [v, label] of opts) how.append(h('option', { value: v, selected: lockMethod() === v }, label));
     after.disabled = lockMethod() === 'none';
   };
   how.onchange = async () => {
     const want = how.value;
-    if (!(await verifyUser('Change the Openpage lock'))) { drawHow(); return; }
+    if (!(await verifyUser('Change the Fennet lock'))) { drawHow(); return; }
     if (want === 'none') prefs.set('lockMethod', 'none');
     else if (want === 'device') {
-      const r = await ask('auth', { reason: 'Turn on the Openpage lock' });
+      const r = await ask('auth', { reason: 'Turn on the Fennet lock' });
       if (r && r.ok) prefs.set('lockMethod', 'device');
     } else await setupLock({ fromSettings: true, start: 'pin' });
     drawHow();
@@ -268,9 +275,9 @@ export function securitySettings() {
     h('span', { style: { fontSize: '15px' } }, 'Privacy & security'),
     h('small', {}, 'Profile name (shown to collaborators)'), name,
     h('div', { class: 'row' }, h('small', {}, 'Lock with'), how),
-    h('div', { class: 'row' }, h('small', {}, 'Lock Openpage'), after),
+    h('div', { class: 'row' }, h('small', {}, 'Lock Fennet'), after),
     h('label', { class: 'check' }, prot, 'Protected mode'),
     h('small', {}, 'Blocks exporting, sharing, printing, backups and copying to other apps, and hides the screen while it\'s being recorded or mirrored. Turning it off needs your unlock.'),
-    h('small', {}, 'Privacy: notes stay on this device (and in iCloud Drive folders you choose to share). Openpage has no account servers, ads, analytics or trackers. AI features are off unless you add your own key, and then send only what you ask about to that provider.'),
+    h('small', {}, 'Privacy: notes stay on this device (and in iCloud Drive folders you choose to share). Fennet has no account servers, ads, analytics or trackers. AI features are off unless you add your own key, and then send only what you ask about to that provider.'),
     erase);
 }

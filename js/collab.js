@@ -130,7 +130,7 @@ export async function joinSubject(app) {
   if (!folder) return;
   const api = folderAPI(folder);
   const raw = await api.read(SPACE_FILE);
-  if (!raw) { toast('That folder isn\'t an Openpage shared subject (or it\'s still downloading — try again in a moment)', 6000); return; }
+  if (!raw) { toast('That folder isn\'t an Fennet shared subject (or it\'s still downloading — try again in a moment)', 6000); return; }
   const header = JSON.parse(raw);
   if ((await spaces()).some((s) => s.spaceId === header.spaceId)) { toast('You\'ve already joined this subject'); return; }
   let key = null;
@@ -177,7 +177,7 @@ function howToInvite(subjectName, folderName) {
           h('li', {}, `Open the Files app → iCloud Drive → "${folderName}".`),
           h('li', {}, 'Press and hold the folder → Share → Collaborate, and invite people (only they can open it).'),
           h('li', {}, 'Tell them the passphrase yourself — in person or in a message.'),
-          h('li', {}, 'They open Openpage → + New → Join shared subject, and pick the folder.')),
+          h('li', {}, 'They open Fennet → + New → Join shared subject, and pick the folder.')),
         h('p', {}, 'Notes sync through iCloud within seconds to minutes. iPads near each other also update live.'), ok));
     document.body.append(el);
     ok.onclick = () => { el.remove(); resolve(); };
@@ -343,7 +343,7 @@ export async function startLive(app) {
   const list = await spaces();
   for (const s of list) live.spaces.set(await spaceHash(s.spaceId), s);
   if (!list.length) { nativeCall('collab', 'liveStop'); return; }
-  nativeCall('collab', 'liveStart', { spaces: [...live.spaces.keys()], name: (profile() && profile().name) || 'Openpage' });
+  nativeCall('collab', 'liveStart', { spaces: [...live.spaces.keys()], name: (profile() && profile().name) || 'Fennet' });
 }
 
 // Called when a note is saved here: send it to nearby collaborators in the same shared subject.

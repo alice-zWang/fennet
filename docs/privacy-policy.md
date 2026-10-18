@@ -1,16 +1,16 @@
-# Openpage Privacy Policy
+# Fennet Privacy Policy
 
-_Draft for publishing. Last updated: October 17, 2026. This is a starting point, not legal advice; have it reviewed before you publish Openpage in an app store._
+_Draft for publishing. Last updated: October 17, 2026. This is a starting point, not legal advice; have it reviewed before you publish Fennet in an app store._
 
 ## The short version
 
-Openpage has no servers, accounts database, ads, analytics or trackers. The developer never receives your notes, recordings, name or any other personal data.
+Fennet has no servers, accounts database, ads, analytics or trackers. The developer never receives your notes, recordings, name or any other personal data.
 
 ## What stays on your device
 
-- **Notes, drawings, PDFs, images, audio recordings and transcripts** are stored inside Openpage on your device. In the iPad app they are protected by iPadOS file encryption and can't be read while the iPad is locked.
-- **Your profile** (the name you type when you first open Openpage) is stored only on your device. It is shown to people you collaborate with.
-- **Your unlock** uses your device's Touch ID, Face ID or passcode through Apple's LocalAuthentication; Openpage never sees fingerprint or face data. In a web browser, an Openpage passcode is stored only as a salted, one-way hash.
+- **Notes, drawings, PDFs, images, audio recordings and transcripts** are stored inside Fennet on your device. In the iPad app they are protected by iPadOS file encryption and can't be read while the iPad is locked.
+- **Your profile** (the name you type when you first open Fennet) is stored only on your device. It is shown to people you collaborate with.
+- **Your unlock** uses your device's Touch ID, Face ID or passcode through Apple's LocalAuthentication; Fennet never sees fingerprint or face data. In a web browser, an Fennet passcode is stored only as a salted, one-way hash.
 
 ## When data leaves your device (only if you choose to)
 
@@ -25,11 +25,11 @@ Openpage has no servers, accounts database, ads, analytics or trackers. The deve
 
 ## Children
 
-Openpage doesn't collect personal information from anyone, including children. Shared subjects use iCloud Drive, which follows Apple's account rules (children under 13 use iCloud through Family Sharing).
+Fennet doesn't collect personal information from anyone, including children. Shared subjects use iCloud Drive, which follows Apple's account rules (children under 13 use iCloud through Family Sharing).
 
 ## Deleting your data
 
-Settings → Privacy & security → **Erase all Openpage data on this device** removes every note, recording and setting. Deleting the app also removes them. Files in shared iCloud Drive folders are deleted in the Files app.
+Settings → Privacy & security → **Erase all Fennet data on this device** removes every note, recording and setting. Deleting the app also removes them. Files in shared iCloud Drive folders are deleted in the Files app.
 
 ## Contact
 

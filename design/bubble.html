@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Water Bubble Sampler</title>
+<style>
+  @font-face { font-family: "Space Grotesk"; src: url("../fonts/space-grotesk-latin-wght.woff2") format("woff2"); font-weight: 300 700; }
+  /* glow position inside a tray; registered so it can glide between items */
+  @property --gx { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+  @property --gy { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+
+  :root {
+    --acc: #B8FF2C; --on-acc: #0C110C;
+    --g: 1;                       /* gloss strength, 0–1 (slider) */
+    --d: 5px;                     /* how thick the bubbles are (slider) */
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  }
+  [data-theme="dark"] { --bg: #050705; --card: #0c110c; --line: #1e2a1c; --text: #eaf7da; --muted: #93a487;
+    --pill: #3a3f3a; --pill-ink: #e9eee4; --tray: #151a15; --tray-shade: 0 0 0; --drop: 0 0 0; }
+  [data-theme="light"] { --bg: #eef2e8; --card: #f8faf4; --line: #dbe3d0; --text: #16200f; --muted: #5a6851;
+    --pill: #fbfcf8; --pill-ink: #1d2618; --tray: #dfe6d5; --tray-shade: 60 80 40; --drop: 40 60 20; }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); padding: 28px 16px 80px; transition: background .3s; }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 { font: 700 30px "Space Grotesk", var(--font); margin: 0 0 4px; letter-spacing: -.02em; }
+  h2 { font: 600 19px "Space Grotesk", var(--font); margin: 0 0 4px; }
+  p { color: var(--muted); margin: 0 0 14px; max-width: 72ch; }
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); margin-top: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px; min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
+
+  /* ---- controls bar */
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; margin: 18px 0 6px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+  .controls label { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+  .swatches { display: flex; gap: 8px; }
+  .sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+  .sw[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: 2px; }
+  input[type=range] { accent-color: var(--acc); width: 130px; }
+
+  /* ================= the water-bubble look ================= */
+  .bub {
+    --c: var(--pill); --ink: var(--pill-ink);
+    position: relative; isolation: isolate; border: 0; cursor: pointer; color: var(--ink);
+    font: 600 15px/1 var(--font); min-height: 48px; padding: 0 22px; border-radius: 999px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--c), white 20%) 0%, var(--c) 46%, color-mix(in oklab, var(--c), black 9%) 100%);
+    box-shadow:
+      inset 0 1.5px 0 rgb(255 255 255 / calc(.55 * var(--g))),               /* top rim light */
+      inset 0 0 0 1px color-mix(in oklab, var(--c), white 18%),              /* glassy edge */
+      inset 0 -4px 7px rgb(0 0 0 / calc(.16 * var(--g))),                    /* body curving away */
+      0 calc(var(--d) * .25) 0 color-mix(in oklab, var(--c), black 22%),     /* thickness, built up */
+      0 calc(var(--d) * .5) 0 color-mix(in oklab, var(--c), black 30%),
+      0 calc(var(--d) * .75) 0 color-mix(in oklab, var(--c), black 38%),
+      0 var(--d) 0 color-mix(in oklab, var(--c), black 46%),
+      0 calc(var(--d) + 1px) 1px rgb(var(--drop) / .35),
+      0 calc(var(--d) + 10px) 22px -8px rgb(var(--drop) / .55);              /* soft drop shadow */
+    transform: translateY(0);
+    transition: transform .14s cubic-bezier(.3,.7,.4,1), box-shadow .14s, background .25s, color .25s;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  /* the shine: a soft highlight over the top half */
+  .bub::before { content: ""; position: absolute; z-index: -1; left: 7%; right: 7%; top: 2px; height: 48%; pointer-events: none;
+    border-radius: 999px 999px 45% 45% / 999px 999px 70% 70%;
+    background: linear-gradient(180deg, rgb(255 255 255 / calc(.42 * var(--g))), rgb(255 255 255 / 0)); }
+  /* light passing through the bottom, like water */
+  .bub::after { content: ""; position: absolute; z-index: -1; left: 14%; right: 14%; bottom: 3px; height: 34%; pointer-events: none; border-radius: 999px;
+    background: radial-gradient(ellipse at 50% 100%, rgb(255 255 255 / calc(.2 * var(--g))), transparent 70%); }
+  .bub:hover { --c: color-mix(in oklab, var(--pill), white 5%); }
+  .bub:focus-visible { outline: 3px solid var(--acc); outline-offset: 4px; }
+  /* pressed: the bubble sinks into its own thickness */
+  .bub:active, .bub.pressing { transform: translateY(calc(var(--d) * .7));
+    box-shadow: inset 0 1.5px 0 rgb(255 255 255 / calc(.4 * var(--g))), inset 0 0 0 1px color-mix(in oklab, var(--c), white 14%), inset 0 -2px 5px rgb(0 0 0 / .2),
+      0 calc(var(--d) * .3) 0 color-mix(in oklab, var(--c), black 40%), 0 calc(var(--d) * .3 + 4px) 10px -4px rgb(var(--drop) / .5); }
+  /* selected / primary: filled with the accent */
+  .bub.on, .bub[aria-pressed="true"], .bub[aria-selected="true"], .bub[aria-checked="true"], .bub.primary { --c: var(--acc); --ink: var(--on-acc); }
+  .bub.small { min-height: 38px; padding: 0 16px; font-size: 13px; }
+  .bub.round { width: 48px; padding: 0; }
+  .bub .ic { width: 20px; height: 20px; flex: none; }
+  .bub .dots { margin-left: auto; letter-spacing: 2px; opacity: .8; font-weight: 800; }
+
+  /* the tray the bubbles sit in: recessed, and glowing under the selected one */
+  .tray { position: relative; isolation: isolate; border-radius: 30px; padding: 16px 16px calc(16px + var(--d));
+    background: linear-gradient(180deg, color-mix(in oklab, var(--tray), black 18%), var(--tray));
+    box-shadow: inset 0 3px 9px rgb(var(--tray-shade) / .55), inset 0 -1px 0 rgb(255 255 255 / .07), 0 1px 0 rgb(255 255 255 / .05); }
+  .tray::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(55% 45% at var(--gx) var(--gy), color-mix(in oklab, var(--acc), transparent 45%), transparent 72%);
+    transition: --gx .35s cubic-bezier(.3,.7,.4,1), --gy .35s cubic-bezier(.3,.7,.4,1); }
+  .tray.stack { display: grid; gap: calc(12px + var(--d) * .4); }
+  .tray.stack .bub { justify-content: flex-start; min-height: 58px; font-size: 16px; padding: 0 22px; }
+  .tray.row { display: flex; flex-wrap: wrap; gap: calc(10px + var(--d) * .2); }
+
+  /* switch: a bubble knob in a small tray */
+  .switch { position: relative; width: 66px; height: 38px; border-radius: 999px; border: 0; padding: 0; cursor: pointer;
+    background: linear-gradient(180deg, color-mix(in oklab, var(--tray), black 18%), var(--tray));
+    box-shadow: inset 0 2px 6px rgb(var(--tray-shade) / .6), inset 0 -1px 0 rgb(255 255 255 / .08); transition: background .25s; }
+  .switch[aria-checked="true"] { background: linear-gradient(180deg, color-mix(in oklab, var(--acc), black 25%), var(--acc)); }
+  .switch .knob { --d: 3px; position: absolute; top: 4px; left: 4px; width: 30px; height: 30px; min-height: 0; padding: 0; pointer-events: none; transition: left .22s cubic-bezier(.3,.7,.4,1.2); }
+  .switch[aria-checked="true"] .knob { left: 32px; }
+  .setting { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 0; }
+  .setting + .setting { border-top: 1px solid var(--line); }
+
+  /* side-by-side: today's flat chips */
+  .flat-chip { min-height: 44px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in oklab, var(--card), var(--text) 5%); color: var(--muted); padding: 8px 16px; font-size: 13px; }
+  .flat-chip.on { background: var(--acc); color: var(--on-acc); border-color: var(--acc); }
+  .compare { display: grid; gap: 14px; }
+  .compare .lbl { font: 600 11px ui-monospace, monospace; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+
+  /* study stack buttons */
+  .study { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .study .bub { min-height: 56px; font-size: 16px; }
+  .bub.again { --c: color-mix(in oklab, var(--pill), #ff7a6b 12%); }
+
+  /* tool bar */
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 2px 3px rgb(255 255 255 / .5), inset 0 -2px 3px rgb(0 0 0 / .3); }
+
+  @media (prefers-reduced-motion: reduce) { .bub, .switch .knob, .tray::before { transition: none; } }
+  @media (prefers-contrast: more) { .bub { --g: .3; } .bub::before, .bub::after { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Water bubble sampler</h1>
+  <p>The glossy, liquid style from your picture, built from Fennet's own colors with nothing but CSS: a shine on top, a glassy rim, layered thickness, a soft shadow, and a tray that glows under the chosen item. Tap anything to try it. Pressed buttons sink in.</p>
+
+  <div class="controls">
+    <label>Theme <button class="bub small" id="theme">Dark</button></label>
+    <label>Accent <span class="swatches" id="swatches"></span></label>
+    <label>Shine <input type="range" id="gloss" min="0" max="100" value="100"></label>
+    <label>Thickness <input type="range" id="depth" min="0" max="10" value="5"></label>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Tool tray</h2>
+      <p>Like your picture: stacked bubbles in a tray, and the glow follows your choice.</p>
+      <div class="tray stack" data-tray role="radiogroup" aria-label="Tool">
+        <button class="bub" role="radio" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>Pen<span class="dots">•••</span></button>
+        <button class="bub on" role="radio" aria-checked="true"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l-3 5h6l1-2M9 15l7-11 4 3-7 11z"/></svg>Highlighter<span class="dots">•••</span></button>
+        <button class="bub" role="radio" aria-checked="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h11M5 15l9-9 5 5-8 8H8z"/></svg>Eraser<span class="dots">•••</span></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Library filters</h2>
+      <p>The chip row above your notes.</p>
+      <div class="tray row" data-tray role="tablist" aria-label="Filter">
+        <button class="bub small" role="tab" aria-selected="true">All notes</button>
+        <button class="bub small" role="tab" aria-selected="false">Recents</button>
+        <button class="bub small" role="tab" aria-selected="false">Favorites</button>
+        <button class="bub small" role="tab" aria-selected="false">Unfiled</button>
+      </div>
+      <div style="height:22px"></div>
+      <h2>Buttons</h2>
+      <p>Primary actions fill with the accent.</p>
+      <div class="toolbar">
+        <button class="bub primary"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New Note</button>
+        <button class="bub">Resume · p.1</button>
+        <button class="bub round" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Study Stack</h2>
+      <p>Big, friendly answers for flashcards.</p>
+      <div class="study">
+        <button class="bub again">Again</button>
+        <button class="bub primary">Got it</button>
+      </div>
+      <div style="height:22px"></div>
+      <h2>Pen colors</h2>
+      <div class="tray row" data-tray role="radiogroup" aria-label="Color">
+        <button class="bub round" role="radio" aria-checked="true" aria-label="Black"><span class="dot" style="background:#111"></span></button>
+        <button class="bub round" role="radio" aria-checked="false" aria-label="Blue"><span class="dot" style="background:#2f6bff"></span></button>
+        <button class="bub round" role="radio" aria-checked="false" aria-label="Red"><span class="dot" style="background:#e5484d"></span></button>
+        <button class="bub round" role="radio" aria-checked="false" aria-label="Green"><span class="dot" style="background:#2fa84f"></span></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Settings</h2>
+      <p>Section tabs and switches.</p>
+      <div class="tray row" data-tray role="tablist" aria-label="Settings section">
+        <button class="bub small" role="tab" aria-selected="true">Appearance</button>
+        <button class="bub small" role="tab" aria-selected="false">Writing</button>
+        <button class="bub small" role="tab" aria-selected="false">Privacy</button>
+      </div>
+      <div style="height:12px"></div>
+      <div class="setting"><span>Show the buddy</span><button class="switch" role="switch" aria-checked="true" aria-label="Show the buddy"><span class="bub knob"></span></button></div>
+      <div class="setting"><span>Protected mode</span><button class="switch" role="switch" aria-checked="false" aria-label="Protected mode"><span class="bub knob"></span></button></div>
+    </section>
+
+    <section class="card wide">
+      <h2>Today vs water bubble</h2>
+      <p>The same filter row, as it looks in the app now and in the new style.</p>
+      <div class="compare">
+        <div><div class="lbl">Today (flat)</div>
+          <div class="toolbar"><button class="flat-chip on">All notes</button><button class="flat-chip">Recents</button><button class="flat-chip">Favorites</button><button class="flat-chip">Unfiled</button></div></div>
+        <div><div class="lbl">Water bubble</div>
+          <div class="toolbar"><button class="bub small on">All notes</button><button class="bub small">Recents</button><button class="bub small">Favorites</button><button class="bub small">Unfiled</button></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+const root = document.documentElement;
+const ACCENTS = [['#B8FF2C', '#0C110C', 'Lime'], ['#F2786B', '#2a0c08', 'Coral'], ['#5CB8FF', '#06192a', 'Sky'], ['#A98BFF', '#160b33', 'Violet'], ['#FFC447', '#2a1c00', 'Honey']];
+const sw = document.getElementById('swatches');
+for (const [c, on, name] of ACCENTS) {
+  const b = document.createElement('button');
+  b.className = 'sw'; b.style.background = c; b.title = name; b.setAttribute('aria-label', name); b.setAttribute('aria-pressed', String(c === ACCENTS[0][0]));
+  b.onclick = () => { root.style.setProperty('--acc', c); root.style.setProperty('--on-acc', on); for (const x of sw.children) x.setAttribute('aria-pressed', String(x === b)); };
+  sw.append(b);
+}
+const themeBtn = document.getElementById('theme');
+themeBtn.onclick = () => { const dark = root.dataset.theme === 'dark'; root.dataset.theme = dark ? 'light' : 'dark'; themeBtn.textContent = dark ? 'Light' : 'Dark'; for (const t of document.querySelectorAll('[data-tray]')) glow(t); };
+document.getElementById('gloss').oninput = (e) => root.style.setProperty('--g', e.target.value / 100);
+document.getElementById('depth').oninput = (e) => root.style.setProperty('--d', e.target.value + 'px');
+
+// one choice per tray; the tray's glow slides under it
+const chosen = (t) => t.querySelector('[aria-checked="true"], [aria-selected="true"]');
+function glow(t) {
+  const c = chosen(t); if (!c) return;
+  const a = t.getBoundingClientRect(), b = c.getBoundingClientRect();
+  t.style.setProperty('--gx', ((b.left + b.width / 2 - a.left) / a.width * 100) + '%');
+  t.style.setProperty('--gy', ((b.top + b.height / 2 - a.top) / a.height * 100) + '%');
+}
+for (const t of document.querySelectorAll('[data-tray]')) {
+  t.addEventListener('click', (e) => {
+    const b = e.target.closest('.bub'); if (!b || !t.contains(b)) return;
+    for (const x of t.querySelectorAll('.bub')) {
+      const attr = x.hasAttribute('aria-selected') ? 'aria-selected' : 'aria-checked';
+      x.setAttribute(attr, String(x === b)); x.classList.toggle('on', x === b);
+    }
+    glow(t);
+  });
+  glow(t);
+}
+addEventListener('resize', () => document.querySelectorAll('[data-tray]').forEach(glow));
+for (const s of document.querySelectorAll('.switch')) s.onclick = () => s.setAttribute('aria-checked', String(s.getAttribute('aria-checked') !== 'true'));
+// the compare row toggles too
+for (const row of document.querySelectorAll('.compare .toolbar')) row.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; for (const x of row.children) x.classList.toggle('on', x === b); });
+// touch: make the press visible even for quick taps
+addEventListener('pointerdown', (e) => { const b = e.target.closest('.bub'); if (b) { b.classList.add('pressing'); setTimeout(() => b.classList.remove('pressing'), 140); } });
+</script>
+</body>
+</html>

@@ -215,7 +215,7 @@ export async function openDemoView(app) {
   // label the demo quietly in the brand row instead of a badge floating over content
   const v = document.querySelector('.brand-version');
   if (v) { v.textContent = 'demo'; v.title = 'Demo: sample notes, changes aren\'t saved'; }
-  document.title = 'Openpage demo';
+  document.title = 'Fennet demo';
   const n = parseInt(params.get('note'), 10);
   if (n >= 1 && n <= NOTES.length) {
     const note = (await db.all('notes')).find((x) => x.title === NOTES[n - 1].title);

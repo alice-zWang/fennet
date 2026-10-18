@@ -4,25 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#050705">
-<meta name="description" content="Openpage: free note-taking with handwriting, PDF annotation, audio recordings synced to your notes, and AI study tools. Works offline.">
+<meta name="description" content="Fennet: free note-taking with handwriting, PDF annotation, audio recordings synced to your notes, and AI study tools. Works offline.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Openpage">
+<meta name="apple-mobile-web-app-title" content="Fennet">
 <!-- Network lock-down: the app may only load its own files, and reach outside services only for features you turn on (Claude AI with your key, YouTube notes). No analytics, ads or trackers. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' openpage:; script-src 'self' openpage: blob: 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com; worker-src 'self' openpage: blob:; connect-src 'self' openpage: blob: data: https://api.anthropic.com https://cdn.jsdelivr.net; img-src 'self' openpage: data: blob: https://i.ytimg.com; media-src 'self' openpage: blob: data: mediastream:; style-src 'self' openpage: 'unsafe-inline'; font-src 'self' openpage: data:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="stylesheet" href="styles.css">
-<title>Openpage</title>
+<title>Fennet</title>
 <script type="module" src="js/app.js"></script>
 </head>
 <body>
+<!-- shown until the app is ready; js/app.js fades it out. Same buddy, size and spot as the iPad launch screen. -->
+<div id="splash" aria-hidden="true"><div class="splash-buddy"></div></div>
 
 <div id="library" class="view">
   <aside id="sidebar">
-    <div class="brand"><img src="icons/design/mark.png" alt=""><span class="app-name">Openpage</span><span class="brand-version">v1.0</span><span class="spacer"></span>
+    <div class="brand"><img src="icons/design/buddy.png" alt=""><span class="app-name">Fennet</span><span class="brand-version">v1.0</span><span class="spacer"></span>
       <button id="btn-sync" class="icon-btn small" title="Sync folder" aria-label="Sync folder" data-icon="sync" hidden></button>
       <button id="btn-settings" class="icon-btn small" aria-label="Settings" title="Settings" data-icon="gear"></button></div>
     <label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="Search notes" aria-label="Search notes"><kbd class="kbd">⌘K</kbd></label>
@@ -52,14 +54,15 @@
     </header>
     <div class="library-content">
       <section id="continue-card" class="continue-card" aria-label="Continue your work">
-        <img class="continue-art" src="icons/design/continue.png" alt="">
+        <div class="continue-art" aria-hidden="true"></div>
+        <button id="btn-cover" class="icon-btn cover-btn" type="button" aria-label="Change library cover" title="Change cover" data-icon="image"></button>
         <div class="continue-content"><p class="library-eyebrow" id="continue-label">A LITTLE SPACE FOR BIG IDEAS</p>
           <h2 id="continue-title">Make room for your next idea.</h2>
           <p id="continue-detail">Handwrite, annotate, and bring your thinking together.</p>
           <div class="continue-actions"><button id="btn-continue" class="btn primary"><span data-icon="pen"></span><span id="continue-btn-label">Create your first note</span></button>
             <button id="btn-continue-audio" class="audio-chip" hidden><span data-icon="play"></span><span id="continue-audio-label"></span></button></div>
         </div>
-        <p class="continue-coords" aria-hidden="true">re −0.7453  ·  im +0.1127  ·  zoom ×280</p>
+        <p class="continue-coords" aria-hidden="true"></p>
       </section>
       <p id="note-count" class="visually-hidden" aria-live="polite"></p>
       <div id="grid" class="grid"></div>

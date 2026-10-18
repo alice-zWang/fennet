@@ -1,6 +1,6 @@
 // Small shared helpers.
 
-export const APP_NAME = 'Openpage';
+export const APP_NAME = 'Fennet';
 
 // Absolute URL of a bundled file (works on the web and inside the iPad app).
 export const asset = (path) => new URL(path, document.baseURI).href;

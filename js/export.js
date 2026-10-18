@@ -107,7 +107,7 @@ export { isNoteFile, isBackupFile };
 
 // Returns the imported note's metadata. keepId: replace the note with the same id (used by folder sync).
 export async function importNoteData(data, subjectIds, { keepId = false } = {}) {
-  if (!isNoteFile(data)) throw new Error('Not an Openpage note file');
+  if (!isNoteFile(data)) throw new Error('Not an Fennet note file');
   await unpackBlobs(data.blobs);
   const id = keepId ? data.note.id : uid();
   const content = { ...data.content, id };
@@ -135,7 +135,7 @@ export async function exportLibrary() {
 }
 
 export async function importLibrary(data) {
-  if (!isBackupFile(data)) throw new Error('Not an Openpage backup file');
+  if (!isBackupFile(data)) throw new Error('Not an Fennet backup file');
   await unpackBlobs(data.blobs);
   for (const s of data.subjects || []) await db.put('subjects', s);
   for (const d of data.dividers || []) await db.put('dividers', d);

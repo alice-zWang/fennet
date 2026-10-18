@@ -1,4 +1,4 @@
-// Openpage's mascot: a Koch-snowflake fractal (design F01) whose face reacts to what you do.
+// Fennet's mascot: a Koch-snowflake fractal (design F01) whose face reacts to what you do.
 // Body color follows the accent color. Purely decorative: aria-hidden, never blocks the page,
 // no animation when "Reduce Motion" is on, and it can be turned off in Settings.
 import { prefs } from './util.js';

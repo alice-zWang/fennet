@@ -127,10 +127,9 @@ export class Editor {
     this.ocrSoon = debounce(() => this.indexAll(false), 4000);
     this.pmSoon = debounce(() => this.renderPageManager(), 800);
     this.root.querySelector('.ed-left').insertBefore(mascot('ed'), this.titleEl);
-    // quiet orientation: which page you're on, and a brief "Saved" after each save
-    this.pageChip = h('span', { class: 'page-chip', 'aria-live': 'polite' });
+    // a brief "Saved" after each save
     this.savedChip = h('span', { class: 'saved-chip', role: 'status' }, 'Saved');
-    this.titleEl.after(h('span', { class: 'ed-status' }, this.pageChip, this.savedChip));
+    this.titleEl.after(h('span', { class: 'ed-status' }, this.savedChip));
     this.bindUI();
     this.bindPointer();
   }
@@ -614,7 +613,6 @@ export class Editor {
     this.pagesEl.append(add);
     this.applyLayout();
     for (const v of this.views) this.io.observe(v.el);
-    this.updatePageChip();
   }
 
   // Re-sync views after an undo/redo; full rebuild only if the page list changed.
@@ -808,20 +806,12 @@ export class Editor {
     }
     if (best !== this.curIdx && !this.pm.hidden) this.pm.querySelectorAll('.pm-page').forEach((b, i) => b.classList.toggle('cur', i === best));
     this.curIdx = best;
-    this.updatePageChip();
     if (this.sel) this.positionSelMenu();
     // Zoomed in, each page holds only part of itself: redraw when the screen moves past it.
     for (const v of this.views) if (v.rz && (v.reg.w < v.page.w || v.reg.h < v.page.h)) this.raster(v);
   }
 
   currentView() { return this.views[this.curIdx] || this.views[0]; }
-
-  updatePageChip() {
-    if (!this.pageChip || !this.doc) return;
-    const n = this.doc.pages.length;
-    this.pageChip.textContent = `${Math.min(this.curIdx + 1, n)} / ${n}`;
-    this.pageChip.title = `Page ${Math.min(this.curIdx + 1, n)} of ${n}`;
-  }
 
   showSaved() {
     if (!this.savedChip) return;

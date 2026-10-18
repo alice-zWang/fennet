@@ -1,6 +1,6 @@
 {
-  "name": "Openpage",
-  "short_name": "Openpage",
+  "name": "Fennet",
+  "short_name": "Fennet",
   "description": "Free note-taking: handwriting, PDF annotation, audio synced to your notes, and AI study tools. Works offline.",
   "id": "./",
   "start_url": "./",

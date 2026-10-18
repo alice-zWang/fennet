@@ -540,7 +540,7 @@ dialog.modal::backdrop { backdrop-filter: blur(2px); -webkit-backdrop-filter: bl
   .rec-dot { animation: none; }
 }
 
-/* Openpage Figma library · HAXhKZC54VpDFj4bjbd2co / 6:6.
+/* Fennet Figma library · HAXhKZC54VpDFj4bjbd2co / 6:6.
    Library tokens are local so the writing surface keeps its chosen appearance. */
 #library { background: var(--bg); color: var(--text); }
 #library #sidebar { width: 272px; padding: max(28px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom)); gap: 4px; }
@@ -727,7 +727,7 @@ dialog.modal::backdrop { backdrop-filter: blur(2px); -webkit-backdrop-filter: bl
   .continue-coords { display: none; }
 }
 
-/* Shared Openpage editor chrome. Body-level tokens also reach portaled menus,
+/* Shared Fennet editor chrome. Body-level tokens also reach portaled menus,
    color pickers, and dialogs; paper and drawing colors remain document-owned. */
 body:has(#workspace:not([hidden])) { color: var(--text); background: var(--bg); }
 #workspace { color: var(--text); }
@@ -980,7 +980,7 @@ body:has(#workspace:not([hidden])) .seg button.on { color: var(--accent); }
 .accent-swatch.custom:not(.on) { background: conic-gradient(#ff6b6b, #ffb547, #b8ff2c, #4ee6c8, #5cb8ff, #b28cff, #ff6fcf, #ff6b6b); }
 .accent-swatch::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 #library .nav-item.active .dot.plain, .storage-dot { background: var(--accent); }
-.continue-art { filter: var(--art-filter, none); }
+.continue-art { pointer-events: none; }
 
 /* ---------- Privacy & security: unlock / onboarding screens, privacy cover, Protected mode ---------- */
 .secure-screen { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 24px;
@@ -1004,7 +1004,7 @@ body.privacy-cover > :not(.secure-screen)::after { content: none; }
 body.privacy-cover #library, body.privacy-cover #workspace { filter: blur(28px); }
 /* Protected mode: blur while the screen is being recorded or mirrored */
 body.protected.captured #library, body.protected.captured #workspace { filter: blur(32px); }
-body.protected.captured::after { content: "Openpage is hidden while the screen is recorded (Protected mode)"; position: fixed; inset: 0; display: grid; place-items: center; z-index: 999; color: var(--text); font: 600 18px var(--font); padding: 24px; text-align: center; }
+body.protected.captured::after { content: "Fennet is hidden while the screen is recorded (Protected mode)"; position: fixed; inset: 0; display: grid; place-items: center; z-index: 999; color: var(--text); font: 600 18px var(--font); padding: 24px; text-align: center; }
 .btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
 #library .nav-item .shared-mark { display: inline-flex; color: var(--accent); margin-left: -6px; }
 #library .nav-item .shared-mark svg { width: 14px; height: 14px; }
@@ -1052,15 +1052,14 @@ body.no-mascot .mascot, body.no-mascot .lib-mascot { display: none; }
 /* color swatches: white stays visible in light mode; clear selected ring */
 .swatch.color-slot { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .22), 0 0 0 1px var(--border-strong); }
 .swatch.color-slot.on { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .22), 0 0 0 2px var(--surface), 0 0 0 4px var(--text); }
-/* editor: quiet title, page chip, saved message */
+/* editor: quiet title, saved message */
 #workspace .ed-left .ed-title { display: block; flex: 0 1 auto; width: auto; max-width: 220px; min-width: 60px; font: 500 13.5px var(--display, var(--font)); color: var(--text-2); background: transparent; border: 0; padding: 4px 6px; text-overflow: ellipsis; }
 #workspace .ed-left .ed-title:focus { color: var(--text); background: var(--surface-2); }
 .ed-status { display: inline-flex; align-items: center; gap: 6px; flex: none; }
-.page-chip { font: 500 11px "JetBrains Mono", ui-monospace, monospace; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
 .saved-chip { font: 500 11.5px var(--display, var(--font)); color: var(--accent); opacity: 0; transition: opacity .25s; }
 .saved-chip.show { opacity: 1; }
 @media (max-width: 900px) { #workspace .ed-left .ed-title { max-width: 120px; } .saved-chip { display: none; } }
-@media (max-width: 600px) { #workspace .ed-left .ed-title, .page-chip { display: none; } }
+@media (max-width: 600px) { #workspace .ed-left .ed-title { display: none; } }
 
 /* ---------- Pen popover (tap the active tool, or the gear) ---------- */
 .tool-popover { padding: 0; }
@@ -1196,3 +1195,275 @@ dialog.settings-modal .actions { padding: 12px 22px 16px; border-top: 1px solid 
 .check input[type="checkbox"]:checked { background: var(--accent-fill); border-color: var(--accent-fill); }
 .check input[type="checkbox"]:checked::after { transform: translateX(18px); background: var(--on-accent); }
 .check input[type="checkbox"]:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+
+/* ---- Fennet brand: splash, sidebar logo, About banner (art from tools/render-julia.mjs) */
+/* the opening screen: just the buddy, centered at 120 pt like the native launch screen (LaunchBuddy) */
+#splash { position: fixed; inset: 0; z-index: 3000;   /* above the lock and welcome screens */ display: grid; place-items: center;
+  background: #F4F8EE; transition: opacity .45s ease, visibility .45s; }
+#splash .splash-buddy { width: 120px; height: 120px; background: url(icons/design/buddy.png) center / contain no-repeat; }
+#splash.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #splash { background: #0C110C; } }
+:root[data-theme="dark"] #splash { background: #0C110C; }
+#library .brand img { filter: var(--art-filter, none); }
+@media (prefers-reduced-motion: reduce) { #splash { transition: none; } }
+
+#library .brand img { width: 34px; height: 34px; object-fit: contain; border: 0; border-radius: 0; }
+.continue-art { object-position: 62% 50%; }
+
+.about-logo { aspect-ratio: 8 / 3; border-radius: 16px; margin-bottom: 12px; border: 1px solid var(--border);
+  background: url(icons/design/logo-full-light.jpg) center / cover; filter: var(--art-filter, none); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .about-logo { background-image: url(icons/design/logo-full-dark.jpg); } }
+:root[data-theme="dark"] .about-logo { background-image: url(icons/design/logo-full-dark.jpg); }
+
+/* ---- Water-bubble UI (design/bubble.html) ------------------------------------------------------------
+   Three materials, all drawn with gradients and shadows (no images, no extra elements):
+     bubble – everything you tap: a domed shine, a glassy rim, stacked thickness, a soft shadow; sinks when pressed
+     tray   – fields, search, toolbars and segmented controls: recessed, so the bubbles sit in them
+     glass  – cards, dialogs, menus and panels: a lit top edge, a faint sheen and a soft lift
+   Note pages stay flat paper. ":is(#_, html):is(#_, html)" never matches #_ but gives these rules the strength of
+   two ids, so they beat the older #library / #workspace overrides without rewriting them. The control lists sit in
+   :where() (no extra strength), so the state rules below (primary, selected, right/wrong…) still win over the base. */
+:root { --bub-pill: #fbfcf8; --bub-tray: #e2e9d8; --bub-shade: 60 80 40; --bub-drop: 40 60 20; --bub-rim: .9; --bub-sheen: .5; --bub-g: 1; --bub-d: 4px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bub-pill: #353b35; --bub-tray: #080b08; --bub-shade: 0 0 0; --bub-drop: 0 0 0; --bub-rim: .1; --bub-sheen: .05; } }
+:root[data-theme="dark"] { --bub-pill: #353b35; --bub-tray: #080b08; --bub-shade: 0 0 0; --bub-drop: 0 0 0; --bub-rim: .1; --bub-sheen: .05; }
+
+/* ===== bubble ===== */
+:is(#_, html):is(#_, html) :where(
+  .btn:not(.ghost), .filter-chip, .settings-nav button, .head-btn, .audio-chip, .brush-chip, .fav-pen, .gal-cats button,
+  .learn-action, .rec-chip, .size-btn, .choice-btn, .choice, .tp-style, .page-foot button, #workspace .tool-next,
+  .icon-btn:not(.card .icon-btn, .nav-item .icon-btn, .rec-chip .icon-btn),
+  .seg button.on, .side-tabs [role="tab"].on, #workspace .tools button.on, .nav-item.active
+) {
+  --c: var(--bub-pill);
+  --bub-raise:
+    inset 0 1.5px 0 rgb(255 255 255 / calc(.55 * var(--bub-g))),
+    inset 0 0 0 1px color-mix(in oklab, var(--c), white 16%),
+    inset 0 -4px 7px rgb(0 0 0 / calc(.13 * var(--bub-g))),
+    0 calc(var(--bub-d) * .25) 0 color-mix(in oklab, var(--c), black 22%),
+    0 calc(var(--bub-d) * .5) 0 color-mix(in oklab, var(--c), black 30%),
+    0 calc(var(--bub-d) * .75) 0 color-mix(in oklab, var(--c), black 38%),
+    0 var(--bub-d) 0 color-mix(in oklab, var(--c), black 46%),
+    0 calc(var(--bub-d) + 1px) 1px rgb(var(--bub-drop) / .28),
+    0 calc(var(--bub-d) + 9px) 18px -8px rgb(var(--bub-drop) / .5);
+  border-color: transparent;
+  background:
+    radial-gradient(88% 62% at 50% 0%, rgb(255 255 255 / calc(.4 * var(--bub-g))) 0%, rgb(255 255 255 / calc(.09 * var(--bub-g))) 58%, rgb(255 255 255 / 0) 60%),
+    radial-gradient(60% 40% at 50% 108%, rgb(255 255 255 / calc(.16 * var(--bub-g))), rgb(255 255 255 / 0) 70%),
+    linear-gradient(180deg, color-mix(in oklab, var(--c), white 18%) 0%, var(--c) 46%, color-mix(in oklab, var(--c), black 9%) 100%);
+  box-shadow: var(--bub-raise);
+  transform: translateY(0); filter: none;
+  transition: transform .14s cubic-bezier(.3, .7, .4, 1), box-shadow .14s, background .2s, color .2s;
+}
+/* pill shapes */
+:is(#_, html):is(#_, html) :where(.btn:not(.ghost), .filter-chip, .settings-nav button, .audio-chip, .rec-chip, .gal-cats button, .page-foot button,
+  .icon-btn:not(.card .icon-btn, .nav-item .icon-btn, .rec-chip .icon-btn), .seg button.on) { border-radius: 999px; }
+:is(#_, html):is(#_, html) :where(.head-btn, .nav-item.active, .side-tabs [role="tab"].on, .size-btn, .learn-action, .tp-style) { border-radius: 14px; }
+:is(#_, html):is(#_, html) :where(.choice-btn, .choice) { border-radius: 18px; }
+:is(#_, html):is(#_, html) #workspace .tools button.on { --bub-d: 3px; border-radius: 12px; }
+:is(#_, html):is(#_, html) .icon-btn:not(.card .icon-btn, .nav-item .icon-btn, .rec-chip .icon-btn) { --bub-d: 3px; }
+@media (hover: hover) { :is(#_, html):is(#_, html) :where(.btn:not(.ghost):not(:disabled), .filter-chip, .settings-nav button, .head-btn, .icon-btn:not(:disabled), .choice-btn:not(:disabled), .gal-cats button, .learn-action):not(.primary, .on, .selected, .right, .wrong, .stack-again, [aria-pressed="true"]):hover { --c: color-mix(in oklab, var(--bub-pill), white 6%); } }
+
+/* filled states */
+:is(#_, html):is(#_, html) :where(.btn.primary, .filter-chip.selected, .settings-nav button.on, #workspace .tools button.on, .seg button.on, .side-tabs [role="tab"].on,
+  .gal-cats button.on, .size-btn.on, .icon-btn.on, .head-btn[aria-pressed="true"]) { --c: var(--accent-fill); color: var(--on-accent); }
+:is(#_, html):is(#_, html) .btn.primary:hover:not(:disabled) { --c: color-mix(in oklab, var(--accent-fill), white 8%); }
+:is(#_, html):is(#_, html) :where(.fav-pen.on, .rec-chip.on, .choice.on) { --c: color-mix(in oklab, var(--bub-pill), var(--accent-fill) 30%); }
+:is(#_, html):is(#_, html) .btn.danger:not(.primary) { color: var(--danger); }
+:is(#_, html):is(#_, html) .btn.danger.primary { --c: var(--danger); color: #fff; }
+:is(#_, html):is(#_, html) .choice-btn.right { --c: color-mix(in oklab, var(--bub-pill), var(--ok) 26%); }
+:is(#_, html):is(#_, html) .choice-btn.wrong { --c: color-mix(in oklab, var(--bub-pill), var(--danger) 22%); }
+:is(#_, html):is(#_, html) .stack-again { --c: color-mix(in oklab, var(--bub-pill), #ff7a6b 14%); }
+:is(#_, html):is(#_, html) .nav-item.active { color: var(--text); }
+:is(#_, html):is(#_, html) .icon-btn:disabled { background: transparent; box-shadow: none; }
+
+/* pressed: the bubble sinks into its own thickness */
+:is(#_, html):is(#_, html) :where(.btn:not(.ghost):not(:disabled), .filter-chip, .settings-nav button, .head-btn, .audio-chip, .brush-chip, .fav-pen, .gal-cats button,
+  .learn-action, .rec-chip, .size-btn, .choice-btn:not(:disabled), .choice, .tp-style, .page-foot button, #workspace .tool-next,
+  .icon-btn:not(:disabled):not(.card .icon-btn, .nav-item .icon-btn, .rec-chip .icon-btn), #workspace .tools button.on):active {
+  transform: translateY(calc(var(--bub-d) * .7));
+  box-shadow: inset 0 1.5px 0 rgb(255 255 255 / calc(.4 * var(--bub-g))), inset 0 0 0 1px color-mix(in oklab, var(--c), white 12%), inset 0 -2px 5px rgb(0 0 0 / .2),
+    0 calc(var(--bub-d) * .3) 0 color-mix(in oklab, var(--c), black 40%), 0 calc(var(--bub-d) * .3 + 3px) 8px -4px rgb(var(--bub-drop) / .5);
+}
+:is(#_, html):is(#_, html) :where(.btn, .filter-chip, .settings-nav button, .icon-btn, .head-btn, .choice-btn):focus-visible { outline: 2.5px solid var(--accent); outline-offset: 3px; }
+:is(#_, html):is(#_, html) :where(.filter-chip, .settings-nav button, .stack-row .btn) { font-weight: 600; }
+:is(#_, html):is(#_, html) .stack-row .btn { min-height: 50px; font-size: 15px; }
+/* room for the thickness so rows don't collide */
+.library-filters, .settings-nav, .stack-row, .stack-controls, .learn-actions, .gal-cats { padding-bottom: calc(var(--bub-d) + 2px); }
+
+/* ===== tray ===== */
+:is(#_, html):is(#_, html) :where(.search, input[type="text"], input[type="search"]:not(.search input), input[type="password"], input[type="number"], input[type="email"], input[type="url"],
+  select, textarea, .seg, .learn-seg, .side-tabs, #workspace .tools, .storage-bar, .cp-num input) {
+  border-color: transparent;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bub-tray), black 10%), var(--bub-tray));
+  box-shadow: inset 0 2px 5px rgb(var(--bub-shade) / .38), inset 0 -1px 0 rgb(255 255 255 / .07), 0 1px 0 rgb(255 255 255 / .05);
+}
+:is(#_, html):is(#_, html) .search input { background: transparent; box-shadow: none; border: 0; }
+:is(#_, html):is(#_, html) :where(.seg, .learn-seg) { border-radius: 999px; padding: 3px; gap: 2px; overflow: visible; }
+:is(#_, html):is(#_, html) .seg button { border-radius: 999px; }
+:is(#_, html):is(#_, html) .side-tabs { border-radius: 18px; margin: 6px; border-bottom: 0; }
+:is(#_, html):is(#_, html) #workspace .tools { border: 0; }
+:is(#_, html):is(#_, html) .storage-bar span { background: linear-gradient(180deg, color-mix(in oklab, var(--accent-fill), white 25%), var(--accent-fill)); border-radius: 999px; }
+:is(#_, html):is(#_, html) :where(input, select, textarea):focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+
+/* ===== glass ===== */
+:is(#_, html):is(#_, html) :where(dialog.modal, .menu, .selmenu, .cpicker, .secure-card, .storage-card, .callout, .stack-done, .scard .face, .flashcard, .learn-source,
+  .pm-page, #workspace .floating-palette, #workspace .ed-right, #workspace .side-sec, .continue-card, .replay-banner, .demo-banner, .outline-page) {
+  border-color: transparent;
+  background-image: linear-gradient(180deg, rgb(255 255 255 / var(--bub-sheen)), rgb(255 255 255 / 0) 38%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / var(--bub-rim)),
+    inset 0 0 0 1px var(--border),
+    0 2px 0 rgb(var(--bub-drop) / .1),
+    0 18px 38px -18px rgb(var(--bub-drop) / .5);
+}
+:is(#_, html):is(#_, html) :where(dialog.modal, .menu, .selmenu, .cpicker) { box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--bub-rim)), inset 0 0 0 1px var(--border-strong), 0 24px 60px -20px rgb(var(--bub-drop) / .7); }
+/* note thumbnails keep their picture; they just get the lit edge and lift */
+:is(#_, html):is(#_, html) #library .card .thumb { border-color: transparent; box-shadow: inset 0 0 0 1px var(--border), 0 2px 0 rgb(var(--bub-drop) / .12), 0 14px 26px -16px rgb(var(--bub-drop) / .55); }
+:is(#_, html):is(#_, html) #library .card:hover .thumb { box-shadow: inset 0 0 0 2px var(--accent), 0 2px 0 rgb(var(--bub-drop) / .12), 0 18px 30px -16px rgb(var(--bub-drop) / .6); }
+:is(#_, html):is(#_, html) .continue-card { background-image: none; }   /* has its own art */
+
+/* switches: a recessed track and a glossy bubble knob */
+.check input[type="checkbox"] { width: 52px; height: 30px; border: 0;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bub-tray), black 16%), var(--bub-tray));
+  box-shadow: inset 0 2px 5px rgb(var(--bub-shade) / .5), inset 0 -1px 0 rgb(255 255 255 / .08); }
+.check input[type="checkbox"]:checked { background: linear-gradient(180deg, color-mix(in oklab, var(--accent-fill), black 22%), var(--accent-fill)); }
+.check input[type="checkbox"]::after, .check input[type="checkbox"]:checked::after { top: 3px; left: 3px; width: 24px; height: 24px;
+  background: radial-gradient(circle at 50% 28%, rgb(255 255 255 / .55), rgb(255 255 255 / 0) 55%), linear-gradient(180deg, color-mix(in oklab, var(--bub-pill), white 22%), color-mix(in oklab, var(--bub-pill), black 8%));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--bub-pill), white 18%), 0 2px 0 color-mix(in oklab, var(--bub-pill), black 40%), 0 4px 8px -2px rgb(var(--bub-drop) / .5); }
+.check input[type="checkbox"]:checked::after { transform: translateX(22px); }
+
+@media (prefers-reduced-motion: reduce) { :is(#_, html):is(#_, html) :where(.btn, .filter-chip, .settings-nav button, .icon-btn, .head-btn, #workspace .tools button) { transition: none; } }
+@media (prefers-contrast: more) { :root { --bub-g: .3; --bub-sheen: 0; } }
+
+/* ---- Library cover (js/covers.js) ---- */
+.continue-art { overflow: hidden; }
+.cover-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 50%; }
+.cover-photo.fractal { filter: var(--art-filter, none); }
+.cover-bg { position: absolute; inset: 0; }
+/* fractal shapes tinted with the accent (or their own --ink) */
+.cover-mask { position: absolute; background: var(--ink, var(--accent-fill)); -webkit-mask: var(--src) center / 100% 100% no-repeat; mask: var(--src) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--ink, var(--accent-fill)), transparent 55%)); }
+/* plain colors and gradients don't need the dark wash; light covers flip the card to dark text */
+.continue-card.cover-plain::before { background: linear-gradient(90deg, rgb(0 0 0 / .22), rgb(0 0 0 / 0) 70%); }
+.continue-card.cover-light { --bub-pill: #fbfcf8; --bub-drop: 40 60 20; --bg: #F4F8EE; --text: #0C110C; --text-2: #34432c; --muted: #34432c; --border-strong: #c9d4bb; --accent: #2f5a00; color-scheme: light; }
+.continue-card.cover-light::before { background: linear-gradient(90deg, rgb(255 255 255 / .62), rgb(255 255 255 / .25) 45%, rgb(255 255 255 / 0) 75%); }
+.continue-card.cover-light.cover-plain::before { background: none; }
+.cover-btn { position: absolute; top: 14px; right: 14px; z-index: 1; }
+.continue-coords[hidden] { display: none; }
+
+dialog.cover-modal { width: min(720px, calc(100vw - 32px)); }
+.cover-picker { display: grid; gap: 16px; }
+.cover-tabs { justify-self: start; max-width: 100%; overflow-x: auto; }
+.cover-tabs button { min-height: 40px; padding: 0 16px; font-weight: 600; }
+.cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px 14px; }
+.cover-grid[hidden], .cover-mine[hidden] { display: none; }
+.cover-tile { position: relative; display: grid; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--text-2); font-size: 12.5px; text-align: left; }
+.cover-tile .cover-tile-art { position: relative; display: block; aspect-ratio: 16 / 8; border-radius: 14px; overflow: hidden; isolation: isolate;
+  box-shadow: inset 0 0 0 1px var(--border), 0 2px 0 rgb(var(--bub-drop) / .12), 0 10px 20px -12px rgb(var(--bub-drop) / .5); transition: box-shadow .15s, transform .14s; }
+.cover-tile[aria-pressed="true"] .cover-tile-art { box-shadow: 0 0 0 3px var(--accent-fill), 0 10px 22px -10px rgb(var(--bub-drop) / .6); }
+.cover-tile[aria-pressed="true"] { color: var(--text); font-weight: 600; }
+.cover-tile:active .cover-tile-art { transform: translateY(2px); }
+.cover-tile:focus-visible { outline: none; }
+.cover-tile:focus-visible .cover-tile-art { outline: 2.5px solid var(--accent); outline-offset: 3px; }
+.cover-tile.custom .cover-tile-art::after { content: "+"; position: absolute; right: 8px; bottom: 6px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
+  background: rgb(255 255 255 / .85); color: #0C110C; font: 700 18px/1 var(--font); }
+.cover-tile-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cover-mine { display: grid; gap: 12px; }
+.cover-mine-actions { display: flex; flex-wrap: wrap; gap: 10px; padding-bottom: 6px; }
+.cover-mine-actions .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.cover-mine-actions svg { width: 18px; height: 18px; }
+
+/* ---- Welcome tour (js/intro.js) ---- */
+dialog.intro { width: min(560px, calc(100vw - 32px)); padding: 0; overflow: hidden; }
+.intro-body { position: relative; display: grid; gap: 14px; padding: 26px 26px 22px; }
+.intro-skip { position: absolute; top: 12px; right: 12px; z-index: 1; }
+.intro-stage { display: grid; justify-items: center; text-align: center; gap: 10px; min-height: 340px; align-content: start; touch-action: pan-y; }
+.intro-stage.in-right { animation: intro-in-right .32s cubic-bezier(.2, .7, .2, 1); }
+.intro-stage.in-left { animation: intro-in-left .32s cubic-bezier(.2, .7, .2, 1); }
+@keyframes intro-in-right { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+@keyframes intro-in-left { from { opacity: 0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
+.intro-buddy { width: 112px; height: 98px; }
+.intro-stage.first { align-content: center; }
+.intro-stage.first .intro-buddy { width: 176px; height: 154px; margin-bottom: 8px; }
+.intro-buddy svg { width: 100%; height: 100%; overflow: visible; }
+.intro-buddy .m-body { fill: var(--accent-fill); stroke: color-mix(in srgb, var(--accent-fill) 42%, #000); stroke-width: 2.2; stroke-linejoin: round; }
+.intro-art { min-height: 120px; display: grid; place-items: center; width: 100%; }
+.intro-art:has(.intro-hero) { min-height: 0; }
+.intro h2 { margin: 6px 0 0; font: 700 25px/1.2 "Space Grotesk", var(--font); letter-spacing: -.02em; }
+.intro-text { margin: 0; max-width: 42ch; color: var(--text-2); font-size: 15.5px; line-height: 1.5; }
+/* little bubble illustrations of the real controls */
+.intro-tray { display: flex; gap: 10px; padding: 12px 14px calc(12px + var(--bub-d)); border-radius: 22px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bub-tray), black 10%), var(--bub-tray)); box-shadow: inset 0 2px 5px rgb(var(--bub-shade) / .38), inset 0 -1px 0 rgb(255 255 255 / .07); }
+.intro-tray.stack { flex-direction: column; width: min(300px, 100%); }
+.intro-bub { pointer-events: none; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px; font-weight: 600; }
+.intro-bub.round { width: 46px; padding: 0; justify-content: center; }
+:is(#_, html):is(#_, html) .intro-bub.on { --c: var(--accent-fill); color: var(--on-accent); }
+.intro-tray.stack .intro-bub { justify-content: flex-start; min-height: 48px; }
+.intro-bub svg { width: 20px; height: 20px; flex: none; }
+.intro-study { display: grid; gap: 14px; width: min(320px, 100%); }
+.intro-card { display: grid; gap: 4px; padding: 16px 18px; border-radius: 18px; text-align: left; background: var(--surface);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--bub-rim)), inset 0 0 0 1px var(--border), 0 14px 26px -16px rgb(var(--bub-drop) / .55); }
+.intro-card small { font: 600 11px var(--font); letter-spacing: .08em; color: var(--text-2); }
+.intro-card b { font: 600 18px "Space Grotesk", var(--font); }
+.intro-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: var(--bub-d); }
+.intro-lock { width: 104px; height: 104px; display: grid; place-items: center; border-radius: 50%; color: var(--on-accent);
+  background: radial-gradient(88% 62% at 50% 0%, rgb(255 255 255 / .42), rgb(255 255 255 / .08) 58%, rgb(255 255 255 / 0) 60%), linear-gradient(180deg, color-mix(in oklab, var(--accent-fill), white 18%), var(--accent-fill) 46%, color-mix(in oklab, var(--accent-fill), black 10%));
+  box-shadow: inset 0 1.5px 0 rgb(255 255 255 / .55), 0 5px 0 color-mix(in oklab, var(--accent-fill), black 45%), 0 16px 26px -10px rgb(var(--bub-drop) / .55); }
+.intro-lock svg { width: 46px; height: 46px; }
+.intro-yours { display: grid; gap: 14px; justify-items: center; }
+.intro-yours .accent-row { justify-content: center; }
+.intro-yours .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.intro-yours .btn svg { width: 18px; height: 18px; }
+.intro-dots { display: flex; justify-content: center; gap: 4px; }
+.intro-dot { width: 28px; height: 28px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.intro-dot::after { content: ""; width: 8px; height: 8px; border-radius: 999px; background: var(--border-strong); transition: width .2s, background .2s; }
+.intro-dot.on::after { width: 22px; background: var(--accent-fill); }
+.intro-actions { display: flex; justify-content: flex-end; gap: 10px; padding-bottom: var(--bub-d); }
+.intro-actions .btn { min-height: 46px; padding: 0 22px; font-weight: 600; }
+.intro-actions .btn[hidden] { display: none; }
+@media (max-height: 640px) { .intro-stage { min-height: 0; } .intro-buddy { width: 80px; height: 70px; } }
+@media (prefers-reduced-motion: reduce) { .intro-stage.in-right, .intro-stage.in-left { animation: none; } }
+
+/* ---- Water-bubble sidebar and side panel ---- */
+/* the library sidebar floats as a slab of glass beside the notes */
+:is(#_, html):is(#_, html) #library #sidebar { border-right: 0;
+  background: linear-gradient(180deg, rgb(255 255 255 / var(--bub-sheen)), rgb(255 255 255 / 0) 30%), linear-gradient(180deg, color-mix(in oklab, var(--surface), white 3%), var(--surface));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--bub-rim)), inset 0 0 0 1px var(--border), 0 22px 44px -22px rgb(var(--bub-drop) / .6); }
+@media (min-width: 761px) {
+  :is(#_, html):is(#_, html) #library #sidebar { margin: 12px 0 12px 12px; border-radius: 28px; }
+}
+/* every row is a soft bubble; the chosen one is a full bubble */
+:is(#_, html):is(#_, html) #library .nav-item {
+  --c: color-mix(in oklab, var(--bub-pill), var(--surface) 62%); --bub-d: 2px; --bub-g: .6;
+  border: 0; border-radius: 16px; margin-bottom: calc(6px + var(--bub-d));
+  background:
+    radial-gradient(88% 62% at 50% 0%, rgb(255 255 255 / calc(.32 * var(--bub-g))) 0%, rgb(255 255 255 / calc(.06 * var(--bub-g))) 58%, rgb(255 255 255 / 0) 60%),
+    linear-gradient(180deg, color-mix(in oklab, var(--c), white 12%) 0%, var(--c) 50%, color-mix(in oklab, var(--c), black 6%) 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / calc(.45 * var(--bub-g))),
+    inset 0 0 0 1px color-mix(in oklab, var(--c), white 10%),
+    0 1px 0 color-mix(in oklab, var(--c), black 25%),
+    0 var(--bub-d) 0 color-mix(in oklab, var(--c), black 40%),
+    0 calc(var(--bub-d) + 6px) 12px -8px rgb(var(--bub-drop) / .45);
+  transition: transform .14s cubic-bezier(.3, .7, .4, 1), box-shadow .14s, background .2s;
+}
+:is(#_, html):is(#_, html) #library .nav-item.active { --c: var(--bub-pill); --bub-d: 4px; --bub-g: 1; color: var(--text); font-weight: 600; }
+@media (hover: hover) { :is(#_, html):is(#_, html) #library .nav-item:not(.active):hover { --c: color-mix(in oklab, var(--bub-pill), var(--surface) 35%); } }
+:is(#_, html):is(#_, html) #library .nav-item:active { transform: translateY(calc(var(--bub-d) * .7)); }
+:is(#_, html):is(#_, html) #library .nav-item.drop { outline: 2px dashed var(--accent); outline-offset: 2px; }
+/* section labels sit quietly between the bubbles */
+#library .nav-head { margin-top: 8px; }
+/* "New subject" and "Divider" are small bubbles too */
+:is(#_, html):is(#_, html) #library .new-links { gap: 8px; flex-wrap: nowrap; padding: 4px 0 calc(4px + var(--bub-d)); }
+:is(#_, html):is(#_, html) #library .new-link.quiet { margin-left: 0; padding: 0 12px; white-space: nowrap; }
+:is(#_, html):is(#_, html) #library .new-link {
+  --c: var(--bub-pill); --bub-d: 3px; min-height: 40px; padding: 0 14px; border-radius: 999px; white-space: nowrap; gap: 8px;
+  background: radial-gradient(88% 62% at 50% 0%, rgb(255 255 255 / .38) 0%, rgb(255 255 255 / .08) 58%, rgb(255 255 255 / 0) 60%), linear-gradient(180deg, color-mix(in oklab, var(--c), white 18%), var(--c) 46%, color-mix(in oklab, var(--c), black 9%));
+  box-shadow: inset 0 1.5px 0 rgb(255 255 255 / .5), inset 0 0 0 1px color-mix(in oklab, var(--c), white 16%), 0 1px 0 color-mix(in oklab, var(--c), black 25%), 0 var(--bub-d) 0 color-mix(in oklab, var(--c), black 45%), 0 calc(var(--bub-d) + 8px) 14px -8px rgb(var(--bub-drop) / .5);
+  transition: transform .14s, box-shadow .14s; }
+:is(#_, html):is(#_, html) #library .new-link:active { transform: translateY(2px); }
+
+/* the editor's side panel (Learn, Outline, Audio…) is glass too */
+:is(#_, html):is(#_, html) #workspace .side { border-left: 0;
+  background: linear-gradient(180deg, rgb(255 255 255 / var(--bub-sheen)), rgb(255 255 255 / 0) 28%), linear-gradient(180deg, color-mix(in oklab, var(--surface), white 3%), var(--surface));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / var(--bub-rim)), inset 0 0 0 1px var(--border), -14px 0 40px -24px rgb(var(--bub-drop) / .6); }
